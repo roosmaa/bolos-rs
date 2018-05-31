@@ -109,8 +109,10 @@ uint32_t ui_display_address_button(uint32_t button_mask,
     }
 }
 
+void update_label(char *buf, size_t len);
+
 void ui_idle(void) {
-    strcpy(textLabel, "WORLD!");
+    update_label(textLabel, sizeof(textLabel));
     UX_DISPLAY(ui_display_address, ui_display_address_prepro);
 }
 
