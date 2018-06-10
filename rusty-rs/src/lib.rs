@@ -7,6 +7,7 @@ extern crate panic_abort;
 mod error;
 mod syscall;
 mod ui;
+mod pic;
 
 use core::slice;
 
