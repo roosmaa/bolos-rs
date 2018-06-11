@@ -27,7 +27,8 @@
 
 ux_state_t ux;
 
-char textLabel[50];
+char firstLabel[100];
+char secondLabel[100];
 
 void ui_ticker_event(bool uxAllowed) {
 }
@@ -70,7 +71,7 @@ const bagl_element_t ui_display_address[] = {
       /* fgcolor */ 0xFFFFFF, /* bgcolor */ 0x000000,
       /* font_id */ BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER,
       /* scrollspeed */ 0},
-     /* text */ "Hello!", /* touch_area_brim */ 0,
+     /* text */ firstLabel, /* touch_area_brim */ 0,
      /* overfgcolor */ 0, /* overbgcolor */ 0,
      /* tap */ NULL, /* out */ NULL, /* over */ NULL},
     {{/* type */ BAGL_LABELINE, /* userid */ 0x02,
@@ -80,7 +81,7 @@ const bagl_element_t ui_display_address[] = {
       /* fgcolor */ 0xFFFFFF, /* bgcolor */ 0x000000,
       /* font_id */ BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER,
       /* scrollspeed */ 26},
-     /* text */ textLabel, /* touch_area_brim */ 0,
+     /* text */ secondLabel, /* touch_area_brim */ 0,
      /* overfgcolor */ 0, /* overbgcolor */ 0,
      /* tap */ NULL, /* out */ NULL, /* over */ NULL},
 };
@@ -112,7 +113,9 @@ uint32_t ui_display_address_button(uint32_t button_mask,
 void update_label(char *buf, size_t len);
 
 void ui_idle(void) {
-    update_label(textLabel, sizeof(textLabel));
+    strcpy(firstLabel, "Hello");
+    strcpy(secondLabel, "C-land");
+
     UX_DISPLAY(ui_display_address, ui_display_address_prepro);
 }
 

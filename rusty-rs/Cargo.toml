@@ -11,3 +11,4 @@ opt-level = "s"
 crate-type = ["staticlib"]
 
 [dependencies]
+byteorder = { version = "1", default-features = false }

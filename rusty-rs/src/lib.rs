@@ -3,13 +3,21 @@
 #![feature(panic_implementation)]
 #![allow(dead_code)]
 
+#![feature(const_slice_as_ptr)]
+
+extern crate byteorder;
+
 mod error;
 mod syscall;
 mod panic;
+mod seproxyhal;
 mod ui;
 mod pic;
 
 use core::slice;
+use seproxyhal::event::Event;
+use seproxyhal::status::{ScreenDisplayStatusTypeId, ScreenDisplayShapeStatus, ScreenDisplayTextStatus};
+use syscall::os_sched_exit;
 
 #[no_mangle]
 pub extern "C" fn update_label(ptr: *mut u8, len: usize) {
@@ -28,6 +36,57 @@ pub extern "C" fn update_label(ptr: *mut u8, len: usize) {
     buf[2] = 'a' as u8 + (buf[2] % ('z' as u8 - 'a' as u8));
     buf[3] = 'a' as u8 + (buf[3] % ('z' as u8 - 'a' as u8));
     buf[4] = 0;
+}
+
+static mut EL_IDX: u8 = 0;
+
+#[no_mangle]
+pub extern "C" fn rust_process_event(ptr: *mut u8, len: usize) {
+    let buf = unsafe { slice::from_raw_parts(ptr, len) };
+
+    seproxyhal::process(buf, |ch| {
+        let el_idx = unsafe { &mut EL_IDX };
+
+        match *ch.event {
+            Event::ButtonPush(_) => {
+                os_sched_exit(1).is_ok();
+            },
+
+            Event::DisplayProcessed(_) => {
+                *el_idx += 1;
+
+                if *el_idx == 1 {
+                    let s = ScreenDisplayTextStatus{
+                        type_id: ScreenDisplayStatusTypeId::LabelLine,
+                        user_id: 0,
+                        x: 0, y: 22, width: 128, height: 12,
+                        scroll_delay: 0, scroll_speed: 0,
+                        fill: 1,
+                        foreground_color: 0xFFFFFF,
+                        background_color: 0x000000,
+                        font_id: 10 | 0x8000,
+                        text: "Hello from Rust!",
+                    }.into();
+                    ch.send_status(s).is_ok();
+                }
+            },
+
+            _ => {
+                *el_idx = 0;
+
+                let s = ScreenDisplayShapeStatus{
+                    type_id: ScreenDisplayStatusTypeId::Rectangle,
+                    user_id: 3,
+                    x: 0, y: 0, width: 128, height: 32,
+                    stroke: 0, radius: 0,
+                    fill: 1,
+                    foreground_color: 0xFFFFFF,
+                    background_color: 0xFFFFFF,
+                }.into();
+                ch.send_status(s).is_ok();
+            },
+        }
+    });
 }
 
 static mut UI: [ui::View; 10] = [ui::View::None; 10];
@@ -53,7 +112,7 @@ fn ui_idle() {
             frame: ui::Frame{ x: 0, y: 12, width: 128, height: 12 },
             font: ui::TextFont::OpenSansRegular11px,
             horizontal_alignment: ui::TextHorizontalAlignment::Center,
-            text: "Hello!".as_bytes(),
+            text: "Hello!",
             ..Default::default()
         }.into(),
         ui::LabelLineView{
@@ -62,7 +121,7 @@ fn ui_idle() {
             font: ui::TextFont::OpenSansRegular11px,
             horizontal_alignment: ui::TextHorizontalAlignment::Center,
             scroll: ui::ScrollMode::Once{ delay: 10, speed: 26 },
-            text: "Rust".as_bytes(),
+            text: "Rust",
             ..Default::default()
         }.into(),
     ];

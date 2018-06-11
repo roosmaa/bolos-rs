@@ -67,7 +67,7 @@ AS     := $(GCCPATH)arm-none-eabi-gcc
 
 LD       := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS  += -O3 -Os
-LDLIBS   += -lm -lgcc -lc rusty-rs/target/thumbv6m-none-eabi/release/librusty_rs.a
+LDLIBS   += -lm -lgcc -lc -z muldefs rusty-rs/target/thumbv6m-none-eabi/release/librusty_rs.a
 
 # import rules to compile glyphs(/pone)
 include $(BOLOS_SDK)/Makefile.glyphs

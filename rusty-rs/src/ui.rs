@@ -9,6 +9,16 @@ pub enum FillMode {
 #[derive(Copy, Clone)]
 pub struct Color(u32);
 
+impl Color {
+    fn white() -> Self {
+        Color(0xFFFFFF)
+    }
+
+    fn black() -> Self {
+        Color(0x000000)
+    }
+}
+
 #[derive(Copy, Clone)]
 pub struct Frame {
     pub x: i16,
@@ -42,8 +52,8 @@ impl Default for RectangleView {
             stroke: 0,
             radius: 0,
             fill: FillMode::NoFill,
-            foreground: Color(0x000000),
-            background: Color(0xFFFFFF),
+            foreground: Color::black(),
+            background: Color::white(),
         }
     }
 }
@@ -141,7 +151,10 @@ pub struct LabelLineView {
     pub horizontal_alignment: TextHorizontalAlignment,
     pub vertical_alignment: TextVerticalAlignment,
     pub scroll: ScrollMode,
-    pub text: &'static [u8],
+    pub foreground: Color,
+    pub background: Color,
+    pub fill: FillMode,
+    pub text: &'static str,
 }
 
 impl Default for LabelLineView {
@@ -153,7 +166,10 @@ impl Default for LabelLineView {
             horizontal_alignment: TextHorizontalAlignment::Left,
             vertical_alignment: TextVerticalAlignment::Top,
             scroll: ScrollMode::Disabled,
-            text: &[0],
+            foreground: Color::white(),
+            background: Color::black(),
+            fill: FillMode::NoFill,
+            text: "",
         }
     }
 }

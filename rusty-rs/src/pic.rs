@@ -1,3 +1,6 @@
+use core::slice;
+use core::str;
+
 extern {
     static _nvram: u32;
     static _envram: u32;
@@ -38,5 +41,27 @@ impl<T> Pic for *mut T {
     #[inline(always)]
     fn pic(self) -> Self {
         translate(self as u32) as Self
+    }
+}
+
+impl<'a> Pic for &'a str {
+    #[inline(always)]
+    fn pic(self) -> Self {
+        let len = self.len();
+        let ptr = translate(self.as_ptr() as u32) as *const u8;
+        let s = unsafe {
+            let bytes = slice::from_raw_parts(ptr, len);
+            str::from_utf8(bytes)
+        };
+        s.unwrap()
+    }
+}
+
+impl<'a, T> Pic for &'a [T] {
+    #[inline(always)]
+    fn pic(self) -> Self {
+        let len = self.len();
+        let ptr = translate(self.as_ptr() as u32) as *const T;
+        unsafe { slice::from_raw_parts(ptr, len) }
     }
 }
