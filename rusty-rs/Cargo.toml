@@ -11,4 +11,3 @@ opt-level = "s"
 crate-type = ["staticlib"]
 
 [dependencies]
-panic-abort = "0.1.1"

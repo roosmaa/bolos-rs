@@ -1,11 +1,11 @@
 #![no_std]
 #![feature(asm)]
+#![feature(panic_implementation)]
 #![allow(dead_code)]
-
-extern crate panic_abort;
 
 mod error;
 mod syscall;
+mod panic;
 mod ui;
 mod pic;
 
