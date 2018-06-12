@@ -1,5 +1,19 @@
 use error::SystemError;
 
+pub fn os_sched_exit(exit_code: u32) -> Result<(), SystemError> {
+    const SYSCALL_ID_IN: u32 = 0x60005fe1;
+    const SYSCALL_ID_OUT: u32 = 0x90005f6f;
+    let params = [
+        exit_code,
+    ];
+    let (ret_id, _) = supervisor_call(SYSCALL_ID_IN, &params);
+    if ret_id != SYSCALL_ID_OUT {
+        Err(SystemError::Security)
+    } else {
+        Ok(())
+    }
+}
+
 pub fn cx_rng(buf: &mut [u8]) -> Result<(), SystemError> {
     const SYSCALL_ID_IN: u32 = 0x6000052c;
     const SYSCALL_ID_OUT: u32 = 0x90000567;
