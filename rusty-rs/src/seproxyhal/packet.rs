@@ -21,9 +21,10 @@ macro_rules! impl_packet {
             $written += if i >= start && i < end {
                 let slice = $data;
 
-                let j = i - start;
-                let cnt = ::core::cmp::min($buf.len() - $written, $len - j);
-                $buf[i..i+cnt].copy_from_slice(&slice[j..j+cnt]);
+                let j = $written;
+                let k = i - start;
+                let cnt = ::core::cmp::min($buf.len() - j, $len - k);
+                $buf[j..j+cnt].copy_from_slice(&slice[k..k+cnt]);
                 cnt
             } else {
                 0
@@ -48,11 +49,12 @@ macro_rules! impl_packet {
             $written += if i >= start && i < end {
                 let it = $data;
 
-                let j = i - start;
-                let cnt = ::core::cmp::min($buf.len() - $written, $len - j);
+                let j = $written;
+                let k = i - start;
+                let cnt = ::core::cmp::min($buf.len() - j, $len - k);
 
-                let dst_it = $buf.iter_mut().skip(i).take(cnt);
-                let src_it = it.skip(j).take(cnt);
+                let dst_it = $buf.iter_mut().skip(j).take(cnt);
+                let src_it = it.skip(k).take(cnt);
                 for (dst, src) in dst_it.zip(src_it) {
                     *dst = src;
                 }
