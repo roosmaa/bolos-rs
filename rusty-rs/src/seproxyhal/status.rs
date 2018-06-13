@@ -224,12 +224,9 @@ pub struct ScreenDisplayCustomIconStatus<'a> {
     pub y: i16,
     pub width: u16,
     pub height: u16,
-    pub fill: u8,
-    pub foreground_color: u32,
-    pub background_color: u32,
-    pub icon_bits_per_pixel: u8,
-    pub icon_colors: &'a [u32],
-    pub icon_bitmap: &'a [u8],
+    pub bits_per_pixel: u8,
+    pub colors: &'a [u32],
+    pub bitmap: &'a [u8],
 }
 
 impl<'a> Packet for ScreenDisplayCustomIconStatus<'a> {
@@ -243,21 +240,21 @@ impl<'a> Packet for ScreenDisplayCustomIconStatus<'a> {
             this.height,
             0,
             0,
-            this.fill,
-            this.foreground_color,
-            this.background_color,
+            0,
+            0,
+            0,
             0,
             0,
         ),
-        [S] 1 => [this.icon_bits_per_pixel],
-        [I] 4 * this.icon_colors.len() => {
-            this.icon_colors.pic().iter().flat_map(|n| {
+        [S] 1 => [this.bits_per_pixel],
+        [I] 4 * this.colors.len() => {
+            this.colors.pic().iter().flat_map(|n| {
                 let mut tmp = [0; 4];
                 LittleEndian::write_u32(&mut tmp, *n);
                 FourByteIterator::new(tmp)
             })
         },
-        [S] this.icon_bitmap.len() => this.icon_bitmap.pic(),
+        [S] this.bitmap.len() => this.bitmap.pic(),
     });
 }
 
