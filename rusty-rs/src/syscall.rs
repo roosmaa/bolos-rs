@@ -1,5 +1,19 @@
 use error::SystemError;
 
+pub fn check_api_level(api_level: u32) -> Result<(), SystemError> {
+    const SYSCALL_ID_IN: u32 = 0x60000137;
+    const SYSCALL_ID_OUT: u32 = 0x900001c6;
+    let params = [
+        api_level,
+    ];
+    let (ret_id, _) = supervisor_call(SYSCALL_ID_IN, &params);
+    if ret_id != SYSCALL_ID_OUT {
+        Err(SystemError::Security)
+    } else {
+        Ok(())
+    }
+}
+
 pub fn os_sched_exit(exit_code: u32) -> Result<(), SystemError> {
     const SYSCALL_ID_IN: u32 = 0x60005fe1;
     const SYSCALL_ID_OUT: u32 = 0x90005f6f;
