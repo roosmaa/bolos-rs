@@ -87,6 +87,41 @@ pub extern "C" fn rust_process_event(ptr: *mut u8, len: usize) {
     });
 }
 
+// TODO: Impleent a way to do event loops with no magical static variables
+/*
+struct AppState {
+}
+
+impl UiHooks for AppState {
+    fn render(&self, ui) {
+        ui.add_view();
+    }
+
+    fn button_event(&mut self, btn) {
+        // handle button events
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rust_main() {
+    let mut state = RefCell::new(AppState{
+        ui: UiState::WelcomeScreen,
+        apdu: ApduState::Idle,
+    });
+
+    let ui = UI::new();
+
+    for ch in EventLoop::run() {
+        let pipeline = Some(ch)
+            .and_then(|ch| ui.handle_event(ch, &mut state));
+
+        if let Some(ch) = pipeline {
+            // Custom event handling here
+        }
+    }
+}
+*/
+
 static mut UI: [ui::View; 10] = [ui::View::None; 10];
 
 fn ui_idle() {

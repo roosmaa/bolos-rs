@@ -21,6 +21,9 @@ fn runtime_offset() -> u32 {
     offset
 }
 
+// TODO: Add platform feature gate such that actual pointer translation
+//       would only happen on Ledger device. On other targets it should
+//       be a noop operation.
 #[inline(always)]
 fn translate(mut addr: u32) -> u32 {
     let nvram_start = unsafe { &_nvram as *const u32 as u32 };
