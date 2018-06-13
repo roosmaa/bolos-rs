@@ -180,9 +180,6 @@ pub struct ScreenDisplaySystemIconStatus {
     pub y: i16,
     pub width: u16,
     pub height: u16,
-    pub fill: u8,
-    pub foreground_color: u32,
-    pub background_color: u32,
     pub icon_id: u8,
 }
 
@@ -197,9 +194,9 @@ impl Packet for ScreenDisplaySystemIconStatus {
             this.height,
             0,
             0,
-            this.fill,
-            this.foreground_color,
-            this.background_color,
+            0,
+            0,
+            0,
             0,
             this.icon_id,
         ),
