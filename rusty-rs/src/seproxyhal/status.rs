@@ -1,6 +1,6 @@
 use byteorder::{ByteOrder, LittleEndian};
 use pic::Pic;
-use super::packet::Packet;
+use super::packet::{Packet, FourByteIterator};
 
 #[repr(u8)]
 enum StatusTag {
@@ -13,7 +13,7 @@ pub struct GeneralStatus {
 
 impl Packet for GeneralStatus {
     impl_packet!(this, StatusTag::General, {
-        2 => [0; 2],
+        [S] 2 => [0; 2],
     });
 }
 
@@ -95,7 +95,7 @@ pub struct ScreenDisplayShapeStatus {
 
 impl Packet for ScreenDisplayShapeStatus {
     impl_packet!(this, StatusTag::ScreenDisplay, {
-        SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
+        [S] SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
             this.type_id,
             this.user_id,
             this.x,
@@ -143,7 +143,7 @@ pub struct ScreenDisplayTextStatus<'a> {
 
 impl<'a> Packet for ScreenDisplayTextStatus<'a> {
     impl_packet!(this, StatusTag::ScreenDisplay, {
-        SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
+        [S] SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
             this.type_id,
             this.user_id,
             this.x,
@@ -158,7 +158,7 @@ impl<'a> Packet for ScreenDisplayTextStatus<'a> {
             this.font_id,
             this.scroll_speed,
         ),
-        this.text.pic().len() => this.text.pic().as_bytes(),
+        [S] this.text.pic().len() => this.text.pic().as_bytes(),
     });
 }
 
@@ -174,7 +174,7 @@ impl<'a> Into<Status<'a>> for ScreenDisplayTextStatus<'a> {
     }
 }
 
-pub struct ScreenDisplaySystemIcon {
+pub struct ScreenDisplaySystemIconStatus {
     pub user_id: u8,
     pub x: i16,
     pub y: i16,
@@ -186,9 +186,9 @@ pub struct ScreenDisplaySystemIcon {
     pub icon_id: u8,
 }
 
-impl Packet for ScreenDisplaySystemIcon {
+impl Packet for ScreenDisplaySystemIconStatus {
     impl_packet!(this, StatusTag::ScreenDisplay, {
-        SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
+        [S] SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
             ScreenDisplayStatusTypeId::Icon,
             this.user_id,
             this.x,
@@ -206,19 +206,19 @@ impl Packet for ScreenDisplaySystemIcon {
     });
 }
 
-impl<'a> Into<ScreenDisplayStatus<'a>> for ScreenDisplaySystemIcon {
+impl<'a> Into<ScreenDisplayStatus<'a>> for ScreenDisplaySystemIconStatus {
     fn into(self) -> ScreenDisplayStatus<'a> {
         ScreenDisplayStatus::SystemIcon(self)
     }
 }
 
-impl<'a> Into<Status<'a>> for ScreenDisplaySystemIcon {
+impl<'a> Into<Status<'a>> for ScreenDisplaySystemIconStatus {
     fn into(self) -> Status<'a> {
         Status::ScreenDisplay(self.into())
     }
 }
 
-pub struct ScreenDisplayCustomIcon<'a> {
+pub struct ScreenDisplayCustomIconStatus<'a> {
     pub user_id: u8,
     pub x: i16,
     pub y: i16,
@@ -227,17 +227,57 @@ pub struct ScreenDisplayCustomIcon<'a> {
     pub fill: u8,
     pub foreground_color: u32,
     pub background_color: u32,
-    pub icon_width: u32,
-    pub icon_height: u32,
-    pub icon_bits_per_pixel: u32,
+    pub icon_bits_per_pixel: u8,
     pub icon_colors: &'a [u32],
     pub icon_bitmap: &'a [u8],
+}
+
+impl<'a> Packet for ScreenDisplayCustomIconStatus<'a> {
+    impl_packet!(this, StatusTag::ScreenDisplay, {
+        [S] SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
+            ScreenDisplayStatusTypeId::Icon,
+            this.user_id,
+            this.x,
+            this.y,
+            this.width,
+            this.height,
+            0,
+            0,
+            this.fill,
+            this.foreground_color,
+            this.background_color,
+            0,
+            0,
+        ),
+        [S] 1 => [this.icon_bits_per_pixel],
+        [I] 4 * this.icon_colors.len() => {
+            this.icon_colors.pic().iter().flat_map(|n| {
+                let mut tmp = [0; 4];
+                LittleEndian::write_u32(&mut tmp, *n);
+                FourByteIterator::new(tmp)
+            })
+        },
+        [S] this.icon_bitmap.len() => this.icon_bitmap.pic(),
+    });
+}
+
+impl<'a> Into<ScreenDisplayStatus<'a>> for ScreenDisplayCustomIconStatus<'a> {
+    fn into(self) -> ScreenDisplayStatus<'a> {
+        ScreenDisplayStatus::CustomIcon(self)
+    }
+}
+
+impl<'a> Into<Status<'a>> for ScreenDisplayCustomIconStatus<'a> {
+    fn into(self) -> Status<'a> {
+        Status::ScreenDisplay(self.into())
+    }
 }
 
 pub enum ScreenDisplayStatus<'a> {
     Shape(ScreenDisplayShapeStatus),
     Text(ScreenDisplayTextStatus<'a>),
-    SystemIcon(ScreenDisplaySystemIcon),
+    SystemIcon(ScreenDisplaySystemIconStatus),
+    CustomIcon(ScreenDisplayCustomIconStatus<'a>),
 }
 
 impl<'a> Packet for ScreenDisplayStatus<'a> {
@@ -247,6 +287,7 @@ impl<'a> Packet for ScreenDisplayStatus<'a> {
             &ScreenDisplayStatus::Shape(ref s) => s.bytes_size(),
             &ScreenDisplayStatus::Text(ref s) => s.bytes_size(),
             &ScreenDisplayStatus::SystemIcon(ref s) => s.bytes_size(),
+            &ScreenDisplayStatus::CustomIcon(ref s) => s.bytes_size(),
         }
     }
 
@@ -256,6 +297,7 @@ impl<'a> Packet for ScreenDisplayStatus<'a> {
             &ScreenDisplayStatus::Shape(ref s) => s.to_bytes(buf, offset),
             &ScreenDisplayStatus::Text(ref s) => s.to_bytes(buf, offset),
             &ScreenDisplayStatus::SystemIcon(ref s) => s.to_bytes(buf, offset),
+            &ScreenDisplayStatus::CustomIcon(ref s) => s.to_bytes(buf, offset),
         }
     }
 }

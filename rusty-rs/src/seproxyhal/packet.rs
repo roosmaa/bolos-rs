@@ -10,7 +10,7 @@ macro_rules! impl_packet {
     ) => {{}};
     (__to_bytes,
         $offset:ident, $buf:ident, $written:ident, $start:expr,
-        $len:expr => $data:expr, $($rest:tt)*
+        [S] $len:expr => $data:expr, $($rest:tt)*
     ) => {
         #[allow(unused_comparisons)]
         {
@@ -19,11 +19,43 @@ macro_rules! impl_packet {
             let i = $offset + $written;
 
             $written += if i >= start && i < end {
-                let data = $data;
+                let slice = $data;
 
                 let j = i - start;
-                let cnt = ::core::cmp::min($buf.len() - $written, data.len() - j);
-                $buf[i..i+cnt].copy_from_slice(&data[j..j+cnt]);
+                let cnt = ::core::cmp::min($buf.len() - $written, $len - j);
+                $buf[i..i+cnt].copy_from_slice(&slice[j..j+cnt]);
+                cnt
+            } else {
+                0
+            };
+
+            impl_packet!(__to_bytes,
+                $offset, $buf, $written, end,
+                $($rest)*
+            );
+        }
+    };
+    (__to_bytes,
+        $offset:ident, $buf:ident, $written:ident, $start:expr,
+        [I] $len:expr => $data:expr, $($rest:tt)*
+    ) => {
+        #[allow(unused_comparisons)]
+        {
+            let start: usize = $start;
+            let end: usize = start + $len;
+            let i = $offset + $written;
+
+            $written += if i >= start && i < end {
+                let it = $data;
+
+                let j = i - start;
+                let cnt = ::core::cmp::min($buf.len() - $written, $len - j);
+
+                let dst_it = $buf.iter_mut().skip(i).take(cnt);
+                let src_it = it.skip(j).take(cnt);
+                for (dst, src) in dst_it.zip(src_it) {
+                    *dst = src;
+                }
                 cnt
             } else {
                 0
@@ -36,7 +68,10 @@ macro_rules! impl_packet {
         }
     };
     (__bytes_size, ) => {{ 0 }};
-    (__bytes_size, $len:expr => $data:expr, $($rest:tt)*) => {{
+    (__bytes_size, [S] $len:expr => $data:expr, $($rest:tt)*) => {{
+        $len as u16 + impl_packet!(__bytes_size, $($rest)*)
+    }};
+    (__bytes_size, [I] $len:expr => $data:expr, $($rest:tt)*) => {{
         $len as u16 + impl_packet!(__bytes_size, $($rest)*)
     }};
     ($self:ident, $packet_tag:expr, {
@@ -67,7 +102,7 @@ macro_rules! impl_packet {
             let mut written = 0;
 
             impl_packet!(__to_bytes, offset, buf, written, 0,
-                3 => {
+                [S] 3 => {
                     use ::byteorder::{ByteOrder, BigEndian};
 
                     let mut hdr: [u8; 3] = [
@@ -83,4 +118,32 @@ macro_rules! impl_packet {
             written
         }
     };
+}
+
+pub struct FourByteIterator {
+    data: [u8; 4],
+    n: usize,
+}
+
+impl FourByteIterator {
+    pub fn new(data: [u8; 4]) -> Self {
+        Self{
+            data: data,
+            n: 0,
+        }
+    }
+}
+
+impl Iterator for FourByteIterator {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<u8> {
+        let n = self.n;
+        if n < self.data.len() {
+            self.n += 1;
+            Some(self.data[n])
+        } else {
+            None
+        }
+    }
 }
