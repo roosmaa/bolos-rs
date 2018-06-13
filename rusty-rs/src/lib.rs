@@ -56,7 +56,7 @@ pub extern "C" fn rust_process_event(ptr: *mut u8, len: usize) {
                 *el_idx += 1;
 
                 if *el_idx == 1 {
-                    let s = ScreenDisplayTextStatus{
+                    ch.send_status(ScreenDisplayTextStatus{
                         type_id: ScreenDisplayStatusTypeId::LabelLine,
                         user_id: 0,
                         x: 0, y: 22, width: 128, height: 12,
@@ -66,24 +66,22 @@ pub extern "C" fn rust_process_event(ptr: *mut u8, len: usize) {
                         background_color: 0x000000,
                         font_id: 10 | 0x8000,
                         text: "Hello from Rust!",
-                    }.into();
-                    ch.send_status(s).is_ok();
+                    }.into()).is_ok();
                 }
             },
 
             _ => {
                 *el_idx = 0;
 
-                let s = ScreenDisplayShapeStatus{
+                ch.send_status(ScreenDisplayShapeStatus{
                     type_id: ScreenDisplayStatusTypeId::Rectangle,
                     user_id: 3,
                     x: 0, y: 0, width: 128, height: 32,
                     stroke: 0, radius: 0,
                     fill: 1,
-                    foreground_color: 0xFFFFFF,
+                    foreground_color: 0x000000,
                     background_color: 0xFFFFFF,
-                }.into();
-                ch.send_status(s).is_ok();
+                }.into()).is_ok();
             },
         }
     });

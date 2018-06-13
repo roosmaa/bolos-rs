@@ -6,22 +6,27 @@ extern {
     static _envram: u32;
 }
 
+#[inline(never)]
+fn runtime_offset() -> u32 {
+    let offset: u32;
+    unsafe {
+        asm!("mov r1, pc
+              ldr $0, =.
+              adds $0, $0, #2
+              subs $0, $0, r1"
+            : "=r" (offset)
+            :: "r1"
+            : "volatile");
+    }
+    offset
+}
+
 #[inline(always)]
 fn translate(mut addr: u32) -> u32 {
     let nvram_start = unsafe { &_nvram as *const u32 as u32 };
     let nvram_end = unsafe { &_envram as *const u32 as u32 };
     if addr >= nvram_start && addr < nvram_end {
-        let offset: u32;
-        unsafe {
-            asm!("mov r1, pc
-                  ldr $0, =.
-                  adds $0, $0, #2
-                  subs $0, $0, r1"
-                : "=r" (offset)
-                :: "r1"
-                : "volatile");
-        }
-        addr -= offset;
+        addr -= runtime_offset();
     }
     return addr;
 }
@@ -44,16 +49,31 @@ impl<T> Pic for *mut T {
     }
 }
 
+impl<'a, T> Pic for &'a T {
+    #[inline(always)]
+    fn pic(self) -> Self {
+        let ptr = (self as *const T).pic();
+        unsafe { &*ptr }
+    }
+}
+
+impl<'a, T> Pic for &'a mut T {
+    #[inline(always)]
+    fn pic(self) -> Self {
+        let ptr = (self as *mut T).pic();
+        unsafe { &mut *ptr }
+    }
+}
+
 impl<'a> Pic for &'a str {
     #[inline(always)]
     fn pic(self) -> Self {
         let len = self.len();
-        let ptr = translate(self.as_ptr() as u32) as *const u8;
-        let s = unsafe {
+        let ptr = self.as_ptr().pic();
+        unsafe {
             let bytes = slice::from_raw_parts(ptr, len);
-            str::from_utf8(bytes)
-        };
-        s.unwrap()
+            str::from_utf8_unchecked(bytes)
+        }
     }
 }
 
@@ -61,7 +81,16 @@ impl<'a, T> Pic for &'a [T] {
     #[inline(always)]
     fn pic(self) -> Self {
         let len = self.len();
-        let ptr = translate(self.as_ptr() as u32) as *const T;
+        let ptr = self.as_ptr().pic();
         unsafe { slice::from_raw_parts(ptr, len) }
+    }
+}
+
+impl<'a, T> Pic for &'a mut [T] {
+    #[inline(always)]
+    fn pic(self) -> Self {
+        let len = self.len();
+        let ptr = self.as_mut_ptr().pic();
+        unsafe { slice::from_raw_parts_mut(ptr, len) }
     }
 }

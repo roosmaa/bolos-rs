@@ -42,17 +42,34 @@ macro_rules! impl_packet {
     ($self:ident, $packet_tag:expr, {
         $($writes:tt)*
     }) => {
-        fn bytes_size(&$self) -> u16 {
+        fn bytes_size(&self) -> u16 {
+            // Sometimes when the struct is static, Rust stores it in
+            // the memory region that is affected by the Ledger memory
+            // model. So we need to fixup the self reference before
+            // usage, to be sure we don't accidentally crash.
+            #[allow(unused_variables)]
+            let $self = {
+                use pic::Pic;
+                self.pic()
+            };
+
             3 + impl_packet!(__bytes_size, $($writes)*)
         }
 
-        fn to_bytes(&$self, buf: &mut [u8], offset: usize) -> usize {
-            use ::byteorder::{ByteOrder, BigEndian};
+        fn to_bytes(&self, buf: &mut [u8], offset: usize) -> usize {
+            // See above in bytes_size for the reasoning behind PIC
+            #[allow(unused_variables)]
+            let $self = {
+                use pic::Pic;
+                self.pic()
+            };
 
             let mut written = 0;
 
             impl_packet!(__to_bytes, offset, buf, written, 0,
                 3 => {
+                    use ::byteorder::{ByteOrder, BigEndian};
+
                     let mut hdr: [u8; 3] = [
                         $packet_tag as u8,
                         0, 0,

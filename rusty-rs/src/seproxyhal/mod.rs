@@ -71,8 +71,7 @@ impl<'a> Drop for Channel<'a> {
         // Send a general status when the app-level code failed to
         // send a response
         if !self.status_sent {
-            let s = status::GeneralStatus{};
-            self.send_packet(s).is_ok();
+            self.send_packet(status::GeneralStatus{}).is_ok();
         }
     }
 }

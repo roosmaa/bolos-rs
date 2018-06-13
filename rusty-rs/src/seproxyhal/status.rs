@@ -12,7 +12,7 @@ pub struct GeneralStatus {
 }
 
 impl Packet for GeneralStatus {
-    impl_packet!(self, StatusTag::General, {
+    impl_packet!(this, StatusTag::General, {
         2 => [0; 2],
     });
 }
@@ -94,19 +94,19 @@ pub struct ScreenDisplayShapeStatus {
 }
 
 impl Packet for ScreenDisplayShapeStatus {
-    impl_packet!(self, StatusTag::ScreenDisplay, {
+    impl_packet!(this, StatusTag::ScreenDisplay, {
         SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
-            self.type_id,
-            self.user_id,
-            self.x,
-            self.y,
-            self.width,
-            self.height,
-            self.stroke,
-            self.radius,
-            self.fill,
-            self.foreground_color,
-            self.background_color,
+            this.type_id,
+            this.user_id,
+            this.x,
+            this.y,
+            this.width,
+            this.height,
+            this.stroke,
+            this.radius,
+            this.fill,
+            this.foreground_color,
+            this.background_color,
             0,
             0,
         ),
@@ -142,23 +142,23 @@ pub struct ScreenDisplayTextStatus<'a> {
 }
 
 impl<'a> Packet for ScreenDisplayTextStatus<'a> {
-    impl_packet!(self, StatusTag::ScreenDisplay, {
+    impl_packet!(this, StatusTag::ScreenDisplay, {
         SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
-            self.type_id,
-            self.user_id,
-            self.x,
-            self.y,
-            self.width,
-            self.height,
-            self.scroll_delay,
+            this.type_id,
+            this.user_id,
+            this.x,
+            this.y,
+            this.width,
+            this.height,
+            this.scroll_delay,
             0,
-            self.fill,
-            self.foreground_color,
-            self.background_color,
-            self.font_id,
-            self.scroll_speed,
+            this.fill,
+            this.foreground_color,
+            this.background_color,
+            this.font_id,
+            this.scroll_speed,
         ),
-        self.text.pic().len() => self.text.pic().as_bytes(),
+        this.text.pic().len() => this.text.pic().as_bytes(),
     });
 }
 
@@ -187,21 +187,21 @@ pub struct ScreenDisplaySystemIcon {
 }
 
 impl Packet for ScreenDisplaySystemIcon {
-    impl_packet!(self, StatusTag::ScreenDisplay, {
+    impl_packet!(this, StatusTag::ScreenDisplay, {
         SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
             ScreenDisplayStatusTypeId::Icon,
-            self.user_id,
-            self.x,
-            self.y,
-            self.width,
-            self.height,
+            this.user_id,
+            this.x,
+            this.y,
+            this.width,
+            this.height,
             0,
             0,
-            self.fill,
-            self.foreground_color,
-            self.background_color,
+            this.fill,
+            this.foreground_color,
+            this.background_color,
             0,
-            self.icon_id,
+            this.icon_id,
         ),
     });
 }
@@ -242,7 +242,8 @@ pub enum ScreenDisplayStatus<'a> {
 
 impl<'a> Packet for ScreenDisplayStatus<'a> {
     fn bytes_size(&self) -> u16 {
-        match self {
+        let this = self.pic();
+        match this {
             &ScreenDisplayStatus::Shape(ref s) => s.bytes_size(),
             &ScreenDisplayStatus::Text(ref s) => s.bytes_size(),
             &ScreenDisplayStatus::SystemIcon(ref s) => s.bytes_size(),
@@ -250,7 +251,8 @@ impl<'a> Packet for ScreenDisplayStatus<'a> {
     }
 
     fn to_bytes(&self, buf: &mut [u8], offset: usize) -> usize {
-        match self {
+        let this = self.pic();
+        match this {
             &ScreenDisplayStatus::Shape(ref s) => s.to_bytes(buf, offset),
             &ScreenDisplayStatus::Text(ref s) => s.to_bytes(buf, offset),
             &ScreenDisplayStatus::SystemIcon(ref s) => s.to_bytes(buf, offset),
@@ -271,14 +273,16 @@ pub enum Status<'a> {
 
 impl<'a> Packet for Status<'a> {
     fn bytes_size(&self) -> u16 {
-        match self {
+        let this = self.pic();
+        match this {
             &Status::General(ref s) => s.bytes_size(),
             &Status::ScreenDisplay(ref s) => s.bytes_size(),
         }
     }
 
     fn to_bytes(&self, buf: &mut [u8], offset: usize) -> usize {
-        match self {
+        let this = self.pic();
+        match this {
             &Status::General(ref s) => s.to_bytes(buf, offset),
             &Status::ScreenDisplay(ref s) => s.to_bytes(buf, offset),
         }
