@@ -56,13 +56,13 @@ impl Channel {
         Ok(())
     }
 
-    pub fn send_command(&mut self, command: Command) -> Result<(), SystemError> {
-        self.send_packet(command)
+    pub fn send_command(&mut self, command: Command) {
+        self.send_packet(command).expect("Failed to send command")
     }
 
-    pub fn send_status(mut self, status: Status) -> Result<(), SystemError> {
+    pub fn send_status(mut self, status: Status) {
         self.status_sent = true;
-        self.send_packet(status)
+        self.send_packet(status).expect("Failed to send status")
     }
 }
 

@@ -89,7 +89,7 @@ pub extern "C" fn rust_process_event(ptr: *mut u8, len: usize) {
         };
 
         if let Some(status) = status {
-            ch.send_status(status).is_ok();
+            ch.send_status(status);
         }
     });
 }
