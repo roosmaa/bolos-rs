@@ -55,6 +55,22 @@ pub fn io_seproxyhal_spi_is_status_sent() -> Result<bool, SystemError> {
     }
 }
 
+pub fn io_seproxyhal_spi_recv(buf: &mut [u8], flags: u32) -> Result<usize, SystemError> {
+    const SYSCALL_ID_IN: u32 = 0x600070d1;
+    const SYSCALL_ID_OUT: u32 = 0x9000702b;
+    let params = [
+        buf.as_ptr() as u32,
+        buf.len() as u32,
+        flags,
+    ];
+    let (ret_id, ret) = supervisor_call(SYSCALL_ID_IN, &params);
+    if ret_id != SYSCALL_ID_OUT {
+        Err(SystemError::Security)
+    } else {
+        Ok(ret as usize)
+    }
+}
+
 pub fn io_seproxyhal_spi_send(buf: &[u8]) -> Result<(), SystemError> {
     const SYSCALL_ID_IN: u32 = 0x60006e1c;
     const SYSCALL_ID_OUT: u32 = 0x90006ef3;

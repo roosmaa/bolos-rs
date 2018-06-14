@@ -110,8 +110,6 @@ uint32_t ui_display_address_button(uint32_t button_mask,
     }
 }
 
-void update_label(char *buf, size_t len);
-
 void ui_idle(void) {
     strcpy(firstLabel, "Hello");
     strcpy(secondLabel, "C-land");

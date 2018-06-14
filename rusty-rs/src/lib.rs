@@ -14,87 +14,11 @@ mod seproxyhal;
 mod ui;
 mod pic;
 
-use core::slice;
+use seproxyhal::MessageLoop;
 use seproxyhal::event::Event;
 use seproxyhal::status::{ScreenDisplayStatusTypeId, ScreenDisplayShapeStatus, ScreenDisplayTextStatus};
 use syscall::os_sched_exit;
 
-#[no_mangle]
-pub extern "C" fn update_label(ptr: *mut u8, len: usize) {
-    let buf = unsafe { slice::from_raw_parts_mut(ptr, len) };
-
-    if let Err(_) = syscall::cx_rng(buf) {
-        buf[0] = 'E' as u8;
-        buf[1] = 'r' as u8;
-        buf[2] = 'r' as u8;
-        buf[3] = 0;
-        return;
-    }
-
-    buf[0] = 'a' as u8 + (buf[0] % ('z' as u8 - 'a' as u8));
-    buf[1] = 'a' as u8 + (buf[1] % ('z' as u8 - 'a' as u8));
-    buf[2] = 'a' as u8 + (buf[2] % ('z' as u8 - 'a' as u8));
-    buf[3] = 'a' as u8 + (buf[3] % ('z' as u8 - 'a' as u8));
-    buf[4] = 0;
-}
-
-static mut EL_IDX: u8 = 0;
-
-#[no_mangle]
-pub extern "C" fn rust_process_event(ptr: *mut u8, len: usize) {
-    let buf = unsafe { slice::from_raw_parts(ptr, len) };
-
-    seproxyhal::process(buf, |ch| {
-        let el_idx = unsafe { &mut EL_IDX };
-
-        let status = match ch.event {
-            Event::ButtonPush(_) => {
-                os_sched_exit(1).is_ok();
-                None
-            },
-
-            Event::DisplayProcessed(_) => {
-                *el_idx += 1;
-
-                if *el_idx == 1 {
-                    Some(ScreenDisplayTextStatus{
-                        type_id: ScreenDisplayStatusTypeId::LabelLine,
-                        user_id: 0,
-                        x: 0, y: 22, width: 128, height: 12,
-                        scroll_delay: 0, scroll_speed: 0,
-                        fill: 1,
-                        foreground_color: 0xFFFFFF,
-                        background_color: 0x000000,
-                        font_id: 10 | 0x8000,
-                        text: "Hello from Rust!",
-                    }.into())
-                } else {
-                    None
-                }
-            },
-
-            _ => {
-                *el_idx = 0;
-
-                Some(ScreenDisplayShapeStatus{
-                    type_id: ScreenDisplayStatusTypeId::Rectangle,
-                    user_id: 3,
-                    x: 0, y: 0, width: 128, height: 32,
-                    stroke: 0, radius: 0,
-                    fill: 1,
-                    foreground_color: 0x000000,
-                    background_color: 0xFFFFFF,
-                }.into())
-            },
-        };
-
-        if let Some(status) = status {
-            ch.send_status(status);
-        }
-    });
-}
-
-// TODO: Impleent a way to do event loops with no magical static variables
 /*
 struct AppState {
 }
@@ -108,26 +32,68 @@ impl UiHooks for AppState {
         // handle button events
     }
 }
+*/
 
 #[no_mangle]
 pub extern "C" fn rust_main() {
-    let mut state = RefCell::new(AppState{
-        ui: UiState::WelcomeScreen,
-        apdu: ApduState::Idle,
-    });
+    // let mut state = RefCell::new(AppState{
+    //     ui: UiState::WelcomeScreen,
+    //     apdu: ApduState::Idle,
+    // });
 
-    let ui = UI::new();
+    // let ui = UI::new();
 
-    for ch in EventLoop::run() {
-        let pipeline = Some(ch)
-            .and_then(|ch| ui.handle_event(ch, &mut state));
+    let mut ui_idx = 0;
 
-        if let Some(ch) = pipeline {
-            // Custom event handling here
+    MessageLoop::new().for_each(|ch| {
+        // let ch = Some(ch)
+        //     .and_then(|ch| ui.handle_event(ch, &mut state));
+        //     .and_then(|ch| apdu.handle_event(ch, &mut state));
+        //     .and_then(|ch| ui.push_changes(ch, &state));
+
+        // if let Some(ch) = ch {
+            // Custom event handling code here
+        // }
+
+        match ch.event {
+            Event::ButtonPush(_) => {
+                os_sched_exit(1).is_ok();
+            },
+
+            Event::DisplayProcessed(_) => {
+                ui_idx += 1;
+
+                if ui_idx == 1 {
+                    ch.send_status(ScreenDisplayTextStatus{
+                        type_id: ScreenDisplayStatusTypeId::LabelLine,
+                        user_id: 0,
+                        x: 0, y: 22, width: 128, height: 12,
+                        scroll_delay: 0, scroll_speed: 0,
+                        fill: 1,
+                        foreground_color: 0xFFFFFF,
+                        background_color: 0x000000,
+                        font_id: 10 | 0x8000,
+                        text: "Hello from Rust!",
+                    }.into())
+                }
+            },
+
+            _ => {
+                ui_idx = 0;
+
+                ch.send_status(ScreenDisplayShapeStatus{
+                    type_id: ScreenDisplayStatusTypeId::Rectangle,
+                    user_id: 3,
+                    x: 0, y: 0, width: 128, height: 32,
+                    stroke: 0, radius: 0,
+                    fill: 1,
+                    foreground_color: 0x000000,
+                    background_color: 0xFFFFFF,
+                }.into())
+            },
         }
-    }
+    });
 }
-*/
 
 static mut UI: [ui::View; 10] = [ui::View::None; 10];
 

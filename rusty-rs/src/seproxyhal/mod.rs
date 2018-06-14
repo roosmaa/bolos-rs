@@ -5,25 +5,74 @@ pub mod command;
 pub mod status;
 
 use error::SystemError;
-use syscall::{os_sched_exit, io_seproxyhal_spi_send};
+use syscall::{check_api_level, io_seproxyhal_spi_recv, io_seproxyhal_spi_send, io_seproxyhal_spi_is_status_sent};
 use self::event::Event;
 use self::command::Command;
 use self::status::Status;
 use self::packet::Packet;
 
-pub fn process<F>(buf: &[u8], handler: F) where
-    F: Fn(Channel) -> ()
-{
-    let ev = match Event::from_bytes(buf) {
-        Some(e) => e,
-        None => {
-            os_sched_exit(1).is_ok();
-            return;
-        },
-    };
+const CX_COMPAT_APILEVEL: u32 = 8;
 
-    let ch = Channel::new(ev);
-    handler(ch);
+pub struct MessageLoop {
+    running: bool,
+}
+
+impl MessageLoop {
+    pub fn new() -> Self {
+        check_api_level(CX_COMPAT_APILEVEL)
+            .expect("API level check failed");
+
+        Self{
+            running: false,
+        }
+    }
+}
+
+impl Iterator for MessageLoop {
+    type Item = Channel;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let first_loop = !self.running;
+
+        if first_loop {
+            self.running = true;
+        }
+
+        let is_status_sent = if first_loop {
+            io_seproxyhal_spi_is_status_sent().unwrap()
+        } else {
+            true
+        };
+
+        let ev = if first_loop && !is_status_sent {
+            Event::StartLoop
+        } else {
+            let mut buf = [0; 64];
+            let read = io_seproxyhal_spi_recv(&mut buf, 0)
+                .expect("Unable to read event data");
+
+            Event::from_bytes(&buf[0..read])
+                .expect("Unsupported event")
+        };
+        Some(Channel::new(ev))
+    }
+}
+
+fn send_packet<T: Packet>(packet: T) -> Result<(), SystemError> {
+    let total = packet.bytes_size() as usize;
+    let mut offset = 0;
+    let mut buf = [0; 64];
+
+    while offset < total {
+        let n = packet.to_bytes(&mut buf, offset);
+        offset += n;
+
+        if let Err(err) = io_seproxyhal_spi_send(&buf[0..n]) {
+            return Err(err);
+        }
+    }
+
+    Ok(())
 }
 
 pub struct Channel {
@@ -39,30 +88,13 @@ impl Channel {
         }
     }
 
-    fn send_packet<T: Packet>(&mut self, packet: T) -> Result<(), SystemError> {
-        let total = packet.bytes_size() as usize;
-        let mut offset = 0;
-        let mut buf = [0; 64];
-
-        while offset < total {
-            let n = packet.to_bytes(&mut buf, offset);
-            offset += n;
-
-            if let Err(err) = io_seproxyhal_spi_send(&buf[0..n]) {
-                return Err(err);
-            }
-        }
-
-        Ok(())
-    }
-
     pub fn send_command(&mut self, command: Command) {
-        self.send_packet(command).expect("Failed to send command")
+        send_packet(command).expect("Failed to send command")
     }
 
     pub fn send_status(mut self, status: Status) {
         self.status_sent = true;
-        self.send_packet(status).expect("Failed to send status")
+        send_packet(status).expect("Failed to send status")
     }
 }
 
@@ -71,7 +103,7 @@ impl Drop for Channel {
         // Send a general status when the app-level code failed to
         // send a response
         if !self.status_sent {
-            self.send_packet(status::GeneralStatus{}).is_ok();
+            send_packet(status::GeneralStatus{}).is_ok();
         }
     }
 }

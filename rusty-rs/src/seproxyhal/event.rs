@@ -35,7 +35,6 @@ impl ButtonPushEvent {
                 button_id: raw[0],
             })
         }
-
     }
 }
 
@@ -66,6 +65,7 @@ impl TickerEvent {
 }
 
 pub enum Event {
+    StartLoop,
     ButtonPush(ButtonPushEvent),
     DisplayProcessed(DisplayProcessedEvent),
     Ticker(TickerEvent),

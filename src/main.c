@@ -33,8 +33,6 @@ void io_seproxyhal_display(const bagl_element_t *element) {
     io_seproxyhal_display_default((bagl_element_t *)element);
 }
 
-void rust_process_event(uint8_t *buf, size_t _len);
-
 uint16_t io_exchange_al(uint8_t channel, uint16_t tx_len) {
     switch (channel & ~(IO_FLAGS)) {
     case CHANNEL_KEYBOARD:
@@ -68,13 +66,11 @@ uint8_t io_event(uint8_t channel) {
     // can't have more than one tag in the reply, not supported yet.
     switch (G_io_seproxyhal_spi_buffer[0]) {
     case SEPROXYHAL_TAG_FINGER_EVENT:
-        // UX_FINGER_EVENT(G_io_seproxyhal_spi_buffer);
-        rust_process_event(G_io_seproxyhal_spi_buffer, sizeof(G_io_seproxyhal_spi_buffer));
+        UX_FINGER_EVENT(G_io_seproxyhal_spi_buffer);
         break;
 
     case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
-        // UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
-        rust_process_event(G_io_seproxyhal_spi_buffer, sizeof(G_io_seproxyhal_spi_buffer));
+        UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
         break;
 
     case SEPROXYHAL_TAG_STATUS_EVENT:
@@ -85,21 +81,18 @@ uint8_t io_event(uint8_t channel) {
         }
     // no break is intentional
     default:
-        // UX_DEFAULT_EVENT();
-        rust_process_event(G_io_seproxyhal_spi_buffer, sizeof(G_io_seproxyhal_spi_buffer));
+        UX_DEFAULT_EVENT();
         break;
 
     case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
-        // UX_DISPLAYED_EVENT({
-        // });
-        rust_process_event(G_io_seproxyhal_spi_buffer, sizeof(G_io_seproxyhal_spi_buffer));
+        UX_DISPLAYED_EVENT({
+        });
         break;
 
     case SEPROXYHAL_TAG_TICKER_EVENT:
-        // UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {
-        //     ui_ticker_event(UX_ALLOWED);
-        // });
-        rust_process_event(G_io_seproxyhal_spi_buffer, sizeof(G_io_seproxyhal_spi_buffer));
+        UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {
+            ui_ticker_event(UX_ALLOWED);
+        });
         break;
     }
 
@@ -111,6 +104,8 @@ uint8_t io_event(uint8_t channel) {
     // command has been processed, DO NOT reset the current APDU transport
     return 1;
 }
+
+void rust_main();
 
 void app_exit(void) {
     BEGIN_TRY_L(exit) {
@@ -126,6 +121,8 @@ void app_exit(void) {
 __attribute__((section(".boot"))) int main(void) {
     // exit critical section
     __asm volatile("cpsie i");
+
+    rust_main();
 
     // ensure exception will work as planned
     os_boot();
