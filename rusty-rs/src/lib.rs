@@ -47,16 +47,17 @@ pub extern "C" fn rust_process_event(ptr: *mut u8, len: usize) {
     seproxyhal::process(buf, |ch| {
         let el_idx = unsafe { &mut EL_IDX };
 
-        match *ch.event {
+        let status = match ch.event {
             Event::ButtonPush(_) => {
                 os_sched_exit(1).is_ok();
+                None
             },
 
             Event::DisplayProcessed(_) => {
                 *el_idx += 1;
 
                 if *el_idx == 1 {
-                    ch.send_status(ScreenDisplayTextStatus{
+                    Some(ScreenDisplayTextStatus{
                         type_id: ScreenDisplayStatusTypeId::LabelLine,
                         user_id: 0,
                         x: 0, y: 22, width: 128, height: 12,
@@ -66,14 +67,16 @@ pub extern "C" fn rust_process_event(ptr: *mut u8, len: usize) {
                         background_color: 0x000000,
                         font_id: 10 | 0x8000,
                         text: "Hello from Rust!",
-                    }.into()).is_ok();
+                    }.into())
+                } else {
+                    None
                 }
             },
 
             _ => {
                 *el_idx = 0;
 
-                ch.send_status(ScreenDisplayShapeStatus{
+                Some(ScreenDisplayShapeStatus{
                     type_id: ScreenDisplayStatusTypeId::Rectangle,
                     user_id: 3,
                     x: 0, y: 0, width: 128, height: 32,
@@ -81,8 +84,12 @@ pub extern "C" fn rust_process_event(ptr: *mut u8, len: usize) {
                     fill: 1,
                     foreground_color: 0x000000,
                     background_color: 0xFFFFFF,
-                }.into()).is_ok();
+                }.into())
             },
+        };
+
+        if let Some(status) = status {
+            ch.send_status(status).is_ok();
         }
     });
 }

@@ -22,17 +22,17 @@ pub fn process<F>(buf: &[u8], handler: F) where
         },
     };
 
-    let ch = Channel::new(&ev);
+    let ch = Channel::new(ev);
     handler(ch);
 }
 
-pub struct Channel<'a> {
-    pub event: &'a Event,
+pub struct Channel {
+    pub event: Event,
     status_sent: bool,
 }
 
-impl<'a> Channel<'a> {
-    fn new(event: &'a Event) -> Self {
+impl Channel {
+    fn new(event: Event) -> Self {
         Self{
             event: event,
             status_sent: false,
@@ -66,7 +66,7 @@ impl<'a> Channel<'a> {
     }
 }
 
-impl<'a> Drop for Channel<'a> {
+impl Drop for Channel {
     fn drop(&mut self) {
         // Send a general status when the app-level code failed to
         // send a response
