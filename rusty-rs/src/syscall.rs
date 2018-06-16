@@ -18,6 +18,14 @@ pub fn os_sched_exit(exit_code: u32) -> Result<(), SystemError> {
         .map(|_| ())
 }
 
+pub fn os_ux(params_bytes: &[u8]) -> Result<u32, SystemError> {
+    const SYSCALL_ID: (u32, u32) = (0x60006158, 0x9000611f);
+    let params = [
+        params_bytes.as_ptr() as u32,
+    ];
+    supervisor_call(SYSCALL_ID, &params)
+}
+
 pub fn cx_rng(buf: &mut [u8]) -> Result<(), SystemError> {
     const SYSCALL_ID: (u32, u32) = (0x6000052c, 0x90000567);
     let params = [
