@@ -76,14 +76,10 @@ impl<A> Middleware<A>
         this.button_actions = Default::default();
     }
 
-    pub fn process_event<D>(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel>
+    fn send_next_view<D>(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel>
         where D: Delegate<Action=A>
     {
         let this = self.pic();
-
-        if let Event::DisplayProcessed(_) = ch.event {
-            this.current_view_index += 1;
-        }
 
         // Coordinate our rendering with the system UI
         match bolos::event() {
@@ -106,6 +102,34 @@ impl<A> Middleware<A>
             ch.send_status(status);
 
             None
+        } else {
+            Some(ch)
+        }
+    }
+
+    pub fn process_event<D>(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel>
+        where D: Delegate<Action=A>
+    {
+        let this = self.pic();
+
+        if let Event::DisplayProcessed(_) = ch.event {
+            this.current_view_index += 1;
+        }
+
+        if delegate.should_redraw() {
+            this.reset_for_redraw();
+        }
+        this.send_next_view(ch, delegate)
+    }
+
+    pub fn redraw_if_needed<D>(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel>
+        where D: Delegate<Action=A>
+    {
+        let this = self.pic();
+
+        if delegate.should_redraw() {
+            this.reset_for_redraw();
+            this.send_next_view(ch, delegate)
         } else {
             Some(ch)
         }
@@ -159,6 +183,7 @@ pub trait Delegate {
     type Action: Copy;
 
     fn prepare_ui(&mut self, ctrl: &mut Controller<Self::Action>);
+    fn should_redraw(&self) -> bool;
     fn process_action(&mut self, _action: Self::Action) {}
 }
 

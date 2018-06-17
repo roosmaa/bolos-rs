@@ -14,16 +14,46 @@ pub mod seproxyhal;
 pub mod ui;
 pub mod pic;
 
+use pic::Pic;
 use seproxyhal::MessageLoop;
 use syscall::os_sched_exit;
 
+enum UiState {
+    Welcome,
+}
+
 struct AppState {
+    ui_state: UiState,
+    ui_updated: bool,
+}
+
+impl AppState {
+    fn new() -> Self {
+        Self{
+            ui_state: UiState::Welcome,
+            ui_updated: true,
+        }
+    }
+
+    fn update_ui(&mut self, new_state: UiState) {
+        let this = self.pic();
+        this.ui_updated = true;
+        this.ui_state = new_state;
+    }
 }
 
 impl ui::Delegate for AppState {
     type Action = ui::BasicAction;
 
+    fn should_redraw(&self) -> bool {
+        let this = self.pic();
+        this.ui_updated
+    }
+
     fn prepare_ui(&mut self, ctrl: &mut ui::Controller<Self::Action>) {
+        let this = self.pic();
+        this.ui_updated = false;
+
         ctrl.set_button_actions(ui::ButtonAction::ForAll(ui::BasicAction::Previous));
 
         ctrl.add_view(|| ui::RectangleView{
@@ -71,19 +101,15 @@ impl ui::Delegate for AppState {
 
 #[no_mangle]
 pub extern "C" fn rust_main() {
-    // let mut state = RefCell::new(AppState{
-    //     ui: UiState::WelcomeScreen,
-    //     apdu: ApduState::Idle,
-    // });
-    let mut state = AppState{};
+    let mut state = AppState::new();
 
     let mut ui = ui::Middleware::new();
 
     MessageLoop::new().for_each(|ch| {
         let _ch = Some(ch)
-            .and_then(|ch| ui.process_event(ch, &mut state));
+            .and_then(|ch| ui.process_event(ch, &mut state))
         //     .and_then(|ch| apdu.handle_event(ch, &mut state));
-        //     .and_then(|ch| ui.push_changes(ch, &state));
+            .and_then(|ch| ui.redraw_if_needed(ch, &mut state));
 
         // if let Some(ch) = ch {
             // Custom event handling code here
