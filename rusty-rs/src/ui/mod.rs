@@ -9,28 +9,86 @@ use seproxyhal::status::{
     ScreenDisplayTextStatus, ScreenDisplaySystemIconStatus, ScreenDisplayCustomIconStatus,
 };
 
-pub struct Middleware {
-    current_view_index: usize,
+struct ButtonActionMap<A> {
+    left: Option<A>,
+    right: Option<A>,
+    both: Option<A>,
 }
 
-impl Middleware {
+impl<A> Default for ButtonActionMap<A> {
+    fn default() -> Self {
+        Self{
+            left: None,
+            right: None,
+            both: None,
+        }
+    }
+}
+
+pub enum ButtonAction<A: Copy> {
+    Map{
+        left: Option<A>,
+        right: Option<A>,
+        both: Option<A>,
+    },
+    ForAll(A),
+    None,
+}
+
+impl<A> Into<ButtonActionMap<A>> for ButtonAction<A>
+    where A: Copy
+{
+    fn into(self) -> ButtonActionMap<A> {
+        match self {
+            ButtonAction::Map{ left: l, right: r, both: b } => ButtonActionMap{
+                left: l,
+                right: r,
+                both: b,
+            },
+            ButtonAction::ForAll(a) => ButtonActionMap{
+                left: Some(a),
+                right: Some(a),
+                both: Some(a),
+            },
+            ButtonAction::None => Default::default(),
+        }
+    }
+}
+
+pub struct Middleware<A: Copy> {
+    current_view_index: usize,
+    button_actions: ButtonActionMap<A>,
+}
+
+impl<A> Middleware<A>
+    where A: Copy
+{
     pub fn new() -> Self {
         Self{
             current_view_index: 0,
+            button_actions: Default::default(),
         }
     }
 
+    fn reset_for_redraw(&mut self) {
+        let this = self.pic();
+        this.current_view_index = 0;
+        this.button_actions = Default::default();
+    }
+
     pub fn process_event<D>(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel>
-        where D: Delegate
+        where D: Delegate<Action=A>
     {
+        let this = self.pic();
+
         if let Event::DisplayProcessed(_) = ch.event {
-            self.current_view_index += 1;
+            this.current_view_index += 1;
         }
 
         // Coordinate our rendering with the system UI
         match bolos::event() {
             bolos::Response::Redraw => {
-                self.current_view_index = 0;
+                this.reset_for_redraw();
             },
             bolos::Response::Ignore | bolos::Response::Continue => {
                 return Some(ch);
@@ -39,11 +97,14 @@ impl Middleware {
         }
 
         // See if there's another view to render
-        let mut ctrl = Controller::new(self.current_view_index);
+        let mut ctrl = Controller::new(this.current_view_index);
         delegate.prepare_ui(&mut ctrl);
         if let Some(ref view) = ctrl.target_view {
+            this.button_actions = ctrl.button_actions;
+
             let status = view.to_display_status(0).into();
             ch.send_status(status);
+
             None
         } else {
             Some(ch)
@@ -51,18 +112,22 @@ impl Middleware {
     }
 }
 
-pub struct Controller<'a> {
+pub struct Controller<'a, A: Copy> {
     target_index: usize,
     current_index: usize,
     target_view: Option<View<'a>>,
+    button_actions: ButtonActionMap<A>,
 }
 
-impl<'a> Controller<'a> {
+impl<'a, A> Controller<'a, A>
+    where A: Copy
+{
     fn new(target_index: usize) -> Self {
         Self{
             target_index: target_index,
             current_index: 0,
             target_view: None,
+            button_actions: Default::default(),
         }
     }
 
@@ -70,15 +135,31 @@ impl<'a> Controller<'a> {
     pub fn add_view<F>(&mut self, lazy_view: F)
         where F: FnOnce() -> View<'a>
     {
-        if self.target_index == self.current_index {
-            self.target_view = lazy_view().into();
+        let this = self.pic();
+        if this.target_index == this.current_index {
+            this.target_view = lazy_view().into();
         }
-        self.current_index += 1;
+        this.current_index += 1;
+    }
+
+    pub fn set_button_actions(&mut self, actions: ButtonAction<A>) {
+        let this = self.pic();
+        this.button_actions = actions.into();
     }
 }
 
+#[derive(Copy, Clone)]
+pub enum BasicAction {
+    Previous,
+    Next,
+    Confirm,
+}
+
 pub trait Delegate {
-    fn prepare_ui(&mut self, ctrl: &mut Controller);
+    type Action: Copy;
+
+    fn prepare_ui(&mut self, ctrl: &mut Controller<Self::Action>);
+    fn process_action(&mut self, _action: Self::Action) {}
 }
 
 pub enum FillMode {
