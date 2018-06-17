@@ -46,7 +46,6 @@ impl ui::Delegate for AppState {
             ..Default::default()
         }.into());
         ctrl.add_view(|| ui::LabelLineView{
-            user_id: 0x02,
             frame: ui::Frame{ x: 23, y: 26, width: 82, height: 12 },
             font: ui::TextFont::OpenSansRegular11px,
             horizontal_alignment: ui::TextHorizontalAlignment::Center,

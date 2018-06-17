@@ -42,7 +42,7 @@ impl Middleware {
         let mut ctrl = Controller::new(self.current_view_index);
         delegate.prepare_ui(&mut ctrl);
         if let Some(ref view) = ctrl.target_view {
-            let status = view.to_display_status().into();
+            let status = view.to_display_status(0).into();
             ch.send_status(status);
             None
         } else {
@@ -129,7 +129,6 @@ impl Default for Frame {
 }
 
 pub struct RectangleView {
-    pub user_id: u8,
     pub frame: Frame,
     pub stroke: u8,
     pub radius: u8,
@@ -139,12 +138,12 @@ pub struct RectangleView {
 }
 
 impl RectangleView {
-    fn to_display_status(&self) -> ScreenDisplayStatus {
+    fn to_display_status(&self, user_id: u8) -> ScreenDisplayStatus {
         let this = self.pic();
 
         ScreenDisplayShapeStatus{
             type_id: ScreenDisplayStatusTypeId::Rectangle,
-            user_id: this.user_id,
+            user_id: user_id,
             x: this.frame.x,
             y: this.frame.y,
             width: this.frame.width,
@@ -161,7 +160,6 @@ impl RectangleView {
 impl Default for RectangleView {
     fn default() -> Self {
         Self{
-            user_id: 0,
             frame: Default::default(),
             stroke: 0,
             radius: 0,
@@ -217,19 +215,18 @@ pub enum Icon<'a> {
 }
 
 pub struct IconView<'a> {
-    pub user_id: u8,
     pub frame: Frame,
     pub icon: Icon<'a>,
 }
 
 impl<'a> IconView<'a> {
-    fn to_display_status(&self) -> ScreenDisplayStatus {
+    fn to_display_status(&self, user_id: u8) -> ScreenDisplayStatus {
         let this = self.pic();
 
         match this.icon {
             Icon::Custom(ref icon) => {
                 ScreenDisplayCustomIconStatus{
-                    user_id: this.user_id,
+                    user_id: user_id,
                     x: this.frame.x,
                     y: this.frame.y,
                     width: this.frame.width,
@@ -241,7 +238,7 @@ impl<'a> IconView<'a> {
             },
             Icon::System(ref icon) => {
                 ScreenDisplaySystemIconStatus{
-                    user_id: this.user_id,
+                    user_id: user_id,
                     x: this.frame.x,
                     y: this.frame.y,
                     width: this.frame.width,
@@ -256,7 +253,6 @@ impl<'a> IconView<'a> {
 impl<'a> Default for IconView<'a> {
     fn default() -> Self {
         Self{
-            user_id: 0,
             frame: Default::default(),
             icon: CustomIcon{
                 bits_per_pixel: 0,
@@ -354,7 +350,6 @@ impl TextFont {
 }
 
 pub struct LabelLineView<'a> {
-    pub user_id: u8,
     pub frame: Frame,
     pub font: TextFont,
     pub horizontal_alignment: TextHorizontalAlignment,
@@ -367,7 +362,7 @@ pub struct LabelLineView<'a> {
 }
 
 impl<'a> LabelLineView<'a> {
-    fn to_display_status(&self) -> ScreenDisplayStatus {
+    fn to_display_status(&self, user_id: u8) -> ScreenDisplayStatus {
         let this = self.pic();
 
         let (scroll_delay, scroll_speed) = this.scroll.to_wire_format();
@@ -377,7 +372,7 @@ impl<'a> LabelLineView<'a> {
 
         ScreenDisplayTextStatus{
             type_id: ScreenDisplayStatusTypeId::LabelLine,
-            user_id: this.user_id,
+            user_id: user_id,
             x: this.frame.x,
             y: this.frame.y,
             width: this.frame.width,
@@ -396,7 +391,6 @@ impl<'a> LabelLineView<'a> {
 impl<'a> Default for LabelLineView<'a> {
     fn default() -> Self {
         Self{
-            user_id: 0,
             frame: Default::default(),
             font: TextFont::OpenSansRegular11px,
             horizontal_alignment: TextHorizontalAlignment::Left,
@@ -423,12 +417,12 @@ pub enum View<'a> {
 }
 
 impl<'a> View<'a> {
-    fn to_display_status(&self) -> ScreenDisplayStatus {
+    fn to_display_status(&self, user_id: u8) -> ScreenDisplayStatus {
         let this = self.pic();
         match this {
-            &View::Rectangle(ref v) => v.to_display_status(),
-            &View::Icon(ref v) => v.to_display_status(),
-            &View::LabelLine(ref v) => v.to_display_status(),
+            &View::Rectangle(ref v) => v.to_display_status(user_id),
+            &View::Icon(ref v) => v.to_display_status(user_id),
+            &View::LabelLine(ref v) => v.to_display_status(user_id),
         }
     }
 }
