@@ -105,6 +105,19 @@ impl<A, D> Middleware<A, D>
         if let Some(ref view) = ctrl.target_view {
             this.button_actions = ctrl.button_actions;
 
+            match view {
+                View::LabelLine(LabelLineView{
+                    scroll: ScrollMode::Once{ speed, delay, finished_action },
+                    text,
+                    ..
+                }) => {
+                    // TODO: Calculate the time it would take for that text to scroll and register the action
+                    let _ = (speed, delay, finished_action, text);
+                },
+
+                _ => {},
+            }
+
             let status = view.to_display_status(0).into();
             ch.send_status(status);
 
@@ -189,7 +202,7 @@ impl<A, D> Middleware<A, D>
 pub struct Controller<'a, A: Copy> {
     target_index: usize,
     current_index: usize,
-    target_view: Option<View<'a>>,
+    target_view: Option<View<'a, A>>,
     button_actions: ButtonActionMap<A>,
 }
 
@@ -207,7 +220,7 @@ impl<'a, A> Controller<'a, A>
 
     #[inline(always)]
     pub fn add_view<F>(&mut self, lazy_view: F)
-        where F: FnOnce() -> View<'a>
+        where F: FnOnce() -> View<'a, A>
     {
         let this = self.pic();
         if this.target_index == this.current_index {
@@ -326,8 +339,8 @@ impl Default for RectangleView {
     }
 }
 
-impl<'a> Into<View<'a>> for RectangleView {
-    fn into(self) -> View<'a> {
+impl<'a, A> Into<View<'a, A>> for RectangleView {
+    fn into(self) -> View<'a, A> {
         View::Rectangle(self)
     }
 }
@@ -419,19 +432,26 @@ impl<'a> Default for IconView<'a> {
     }
 }
 
-impl<'a> Into<View<'a>> for IconView<'a> {
-    fn into(self) -> View<'a> {
+impl<'a, A> Into<View<'a, A>> for IconView<'a> {
+    fn into(self) -> View<'a, A> {
         View::Icon(self)
     }
 }
 
-pub enum ScrollMode {
+pub enum ScrollMode<A> {
     Disabled,
-    Once{ delay: u8, speed: u8 },
-    Infinite{ delay: u8, speed: u8 }
+    Once{
+        delay: u8,
+        speed: u8,
+        finished_action: Option<A>,
+    },
+    Infinite{
+        delay: u8,
+        speed: u8,
+    },
 }
 
-impl ScrollMode {
+impl<A> ScrollMode<A> {
     fn to_wire_format(&self) -> (u8, u8) {
         let this = self.pic();
         let scroll_delay;
@@ -441,13 +461,13 @@ impl ScrollMode {
                 scroll_delay = 0;
                 scroll_speed = 0;
             },
-            &ScrollMode::Once{ delay: d, speed: s } => {
-                scroll_delay = d | 0x80;
-                scroll_speed = s;
+            &ScrollMode::Once{ delay, speed, .. } => {
+                scroll_delay = delay | 0x80;
+                scroll_speed = speed;
             },
-            &ScrollMode::Infinite{ delay: d, speed: s } => {
-                scroll_delay = d;
-                scroll_speed = s;
+            &ScrollMode::Infinite{ delay, speed } => {
+                scroll_delay = delay;
+                scroll_speed = speed;
             },
         };
         (scroll_delay, scroll_speed)
@@ -505,19 +525,19 @@ impl TextFont {
     }
 }
 
-pub struct LabelLineView<'a> {
+pub struct LabelLineView<'a, A> {
     pub frame: Frame,
     pub font: TextFont,
     pub horizontal_alignment: TextHorizontalAlignment,
     pub vertical_alignment: TextVerticalAlignment,
-    pub scroll: ScrollMode,
+    pub scroll: ScrollMode<A>,
     pub foreground: Color,
     pub background: Color,
     pub fill: FillMode,
     pub text: &'a str,
 }
 
-impl<'a> LabelLineView<'a> {
+impl<'a, A> LabelLineView<'a, A> {
     fn to_display_status(&self, user_id: u8) -> ScreenDisplayStatus {
         let this = self.pic();
 
@@ -544,7 +564,7 @@ impl<'a> LabelLineView<'a> {
     }
 }
 
-impl<'a> Default for LabelLineView<'a> {
+impl<'a, A> Default for LabelLineView<'a, A> {
     fn default() -> Self {
         Self{
             frame: Default::default(),
@@ -560,19 +580,19 @@ impl<'a> Default for LabelLineView<'a> {
     }
 }
 
-impl<'a> Into<View<'a>> for LabelLineView<'a> {
-    fn into(self) -> View<'a> {
+impl<'a, A> Into<View<'a, A>> for LabelLineView<'a, A> {
+    fn into(self) -> View<'a, A> {
         View::LabelLine(self)
     }
 }
 
-pub enum View<'a> {
+pub enum View<'a, A> {
     Rectangle(RectangleView),
     Icon(IconView<'a>),
-    LabelLine(LabelLineView<'a>),
+    LabelLine(LabelLineView<'a, A>),
 }
 
-impl<'a> View<'a> {
+impl<'a, A> View<'a, A> {
     fn to_display_status(&self, user_id: u8) -> ScreenDisplayStatus {
         let this = self.pic();
         match this {
