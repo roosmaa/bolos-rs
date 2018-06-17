@@ -1,9 +1,10 @@
 mod bolos;
 
+use core::marker::PhantomData;
 use core::convert::Into;
 use pic::Pic;
 use seproxyhal::Channel;
-use seproxyhal::event::Event;
+use seproxyhal::event::{Event, ButtonPushEvent};
 use seproxyhal::status::{
     ScreenDisplayStatus, ScreenDisplayStatusTypeId, ScreenDisplayShapeStatus,
     ScreenDisplayTextStatus, ScreenDisplaySystemIconStatus, ScreenDisplayCustomIconStatus,
@@ -55,18 +56,25 @@ impl<A> Into<ButtonActionMap<A>> for ButtonAction<A>
     }
 }
 
-pub struct Middleware<A: Copy> {
+pub struct Middleware<A, D> {
     current_view_index: usize,
     button_actions: ButtonActionMap<A>,
+    button_bits: u8,
+    button_timer: usize,
+    phantom_delegate: PhantomData<D>,
 }
 
-impl<A> Middleware<A>
-    where A: Copy
+impl<A, D> Middleware<A, D>
+    where A: Copy,
+          D: Delegate<Action=A>,
 {
     pub fn new() -> Self {
         Self{
             current_view_index: 0,
             button_actions: Default::default(),
+            button_bits: 0,
+            button_timer: 0,
+            phantom_delegate: PhantomData,
         }
     }
 
@@ -76,8 +84,7 @@ impl<A> Middleware<A>
         this.button_actions = Default::default();
     }
 
-    fn send_next_view<D>(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel>
-        where D: Delegate<Action=A>
+    fn send_next_view(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel>
     {
         let this = self.pic();
 
@@ -107,13 +114,58 @@ impl<A> Middleware<A>
         }
     }
 
-    pub fn process_event<D>(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel>
-        where D: Delegate<Action=A>
-    {
+    fn process_button_presses(&mut self, mut button_bits: u8, delegate: &mut D) {
         let this = self.pic();
 
-        if let Event::DisplayProcessed(_) = ch.event {
-            this.current_view_index += 1;
+        const KEY_REPEAT_THRESHOLD: usize = 8; // 800ms
+        const KEY_REPEAT_DELAY: usize = 3; // 300ms
+        const LEFT_BUTTON: u8 = 1 << 0;
+        const RIGHT_BUTTON: u8 = 1 << 1;
+        const BOTH_BUTTONS: u8 = LEFT_BUTTON | RIGHT_BUTTON;
+        let is_released = button_bits == 0;
+
+        if this.button_bits == button_bits {
+            this.button_timer += 1; // once every ~100ms
+        } else if !is_released {
+            // Reset when the bits change
+            this.button_timer = 0;
+        }
+
+        let (pressed_bits, repeating) = if is_released {
+            button_bits = this.button_bits;
+            this.button_bits = 0;
+            this.button_timer = 0;
+            (button_bits, false)
+        } else if this.button_timer > KEY_REPEAT_THRESHOLD
+            && this.button_timer % KEY_REPEAT_DELAY == 0 {
+            (button_bits, true)
+        } else {
+            (0, false)
+        };
+
+        let action = match (pressed_bits, repeating) {
+            (LEFT_BUTTON, _) => this.button_actions.left,
+            (RIGHT_BUTTON, _) => this.button_actions.right,
+            (BOTH_BUTTONS, false) => this.button_actions.both,
+            _ => None,
+        };
+
+        if let Some(action) = action {
+            delegate.process_action(action);
+        }
+    }
+
+    pub fn process_event(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel> {
+        let this = self.pic();
+
+        match ch.event {
+            Event::DisplayProcessed(_) => {
+                this.current_view_index += 1;
+            },
+            Event::ButtonPush(ButtonPushEvent{ flags }) => {
+                this.process_button_presses(flags >> 1, delegate);
+            },
+            _ => {},
         }
 
         if delegate.should_redraw() {
@@ -122,9 +174,7 @@ impl<A> Middleware<A>
         this.send_next_view(ch, delegate)
     }
 
-    pub fn redraw_if_needed<D>(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel>
-        where D: Delegate<Action=A>
-    {
+    pub fn redraw_if_needed(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel> {
         let this = self.pic();
 
         if delegate.should_redraw() {

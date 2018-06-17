@@ -22,7 +22,7 @@ impl EventTag {
 }
 
 pub struct ButtonPushEvent {
-    pub button_id: u8,
+    pub flags: u8,
 }
 
 impl ButtonPushEvent {
@@ -30,9 +30,8 @@ impl ButtonPushEvent {
         if raw.len() != 1 {
             None
         } else {
-            // TODO: Unpack the button_id
             Some(Self{
-                button_id: raw[0],
+                flags: raw[0],
             })
         }
     }
