@@ -10,13 +10,13 @@ use seproxyhal::status::{
 };
 
 pub struct Middleware {
-    current_view: usize,
+    current_view_index: usize,
 }
 
 impl Middleware {
     pub fn new() -> Self {
         Self{
-            current_view: 0,
+            current_view_index: 0,
         }
     }
 
@@ -24,13 +24,13 @@ impl Middleware {
         where D: Delegate
     {
         if let Event::DisplayProcessed(_) = ch.event {
-            self.current_view += 1;
+            self.current_view_index += 1;
         }
 
         // Coordinate our rendering with the system UI
         match bolos::event() {
             bolos::Response::Redraw => {
-                self.current_view = 0;
+                self.current_view_index = 0;
             },
             bolos::Response::Ignore | bolos::Response::Continue => {
                 return Some(ch);
@@ -39,9 +39,9 @@ impl Middleware {
         }
 
         // See if there's another view to render
-        let mut renderer = DisplayList::new(self.current_view);
-        delegate.render(&mut renderer);
-        if let Some(ref view) = renderer.target_view {
+        let mut ctrl = Controller::new(self.current_view_index);
+        delegate.prepare_ui(&mut ctrl);
+        if let Some(ref view) = ctrl.target_view {
             let status = view.to_display_status().into();
             ch.send_status(status);
             None
@@ -51,13 +51,13 @@ impl Middleware {
     }
 }
 
-pub struct DisplayList<'a> {
+pub struct Controller<'a> {
     target_index: usize,
     current_index: usize,
     target_view: Option<View<'a>>,
 }
 
-impl<'a> DisplayList<'a> {
+impl<'a> Controller<'a> {
     fn new(target_index: usize) -> Self {
         Self{
             target_index: target_index,
@@ -67,7 +67,7 @@ impl<'a> DisplayList<'a> {
     }
 
     #[inline(always)]
-    pub fn add<F>(&mut self, lazy_view: F)
+    pub fn add_view<F>(&mut self, lazy_view: F)
         where F: FnOnce() -> View<'a>
     {
         if self.target_index == self.current_index {
@@ -78,7 +78,7 @@ impl<'a> DisplayList<'a> {
 }
 
 pub trait Delegate {
-    fn render(&mut self, renderer: &mut DisplayList);
+    fn prepare_ui(&mut self, ctrl: &mut Controller);
 }
 
 pub enum FillMode {

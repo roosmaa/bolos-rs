@@ -22,30 +22,30 @@ struct AppState {
 }
 
 impl ui::Delegate for AppState {
-    fn render(&mut self, r: &mut ui::DisplayList) {
-        r.add(|| ui::RectangleView{
+    fn prepare_ui(&mut self, ctrl: &mut ui::Controller) {
+        ctrl.add_view(|| ui::RectangleView{
             frame: ui::Frame{ x: 0, y: 0, width: 128, height: 32 },
             fill: ui::FillMode::Fill,
             ..Default::default()
         }.into());
-        r.add(|| ui::IconView{
+        ctrl.add_view(|| ui::IconView{
             frame: ui::Frame{ x: 3, y: 12, width: 7, height: 7 },
             icon: ui::SystemIcon::Cross.into(),
             ..Default::default()
         }.into());
-        r.add(|| ui::IconView{
+        ctrl.add_view(|| ui::IconView{
             frame: ui::Frame{ x: 117, y: 13, width: 8, height: 6 },
             icon: ui::SystemIcon::Check.into(),
             ..Default::default()
         }.into());
-        r.add(|| ui::LabelLineView{
+        ctrl.add_view(|| ui::LabelLineView{
             frame: ui::Frame{ x: 0, y: 12, width: 128, height: 12 },
             font: ui::TextFont::OpenSansRegular11px,
             horizontal_alignment: ui::TextHorizontalAlignment::Center,
             text: "Hello!",
             ..Default::default()
         }.into());
-        r.add(|| ui::LabelLineView{
+        ctrl.add_view(|| ui::LabelLineView{
             user_id: 0x02,
             frame: ui::Frame{ x: 23, y: 26, width: 82, height: 12 },
             font: ui::TextFont::OpenSansRegular11px,
