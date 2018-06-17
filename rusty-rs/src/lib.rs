@@ -17,13 +17,12 @@ pub mod pic;
 use seproxyhal::MessageLoop;
 use seproxyhal::event::Event;
 use syscall::os_sched_exit;
-use ui::{UiMiddleware, UiDelegate, UiDisplayList};
 
 struct AppState {
 }
 
-impl UiDelegate for AppState {
-    fn render(&mut self, r: &mut UiDisplayList) {
+impl ui::Delegate for AppState {
+    fn render(&mut self, r: &mut ui::DisplayList) {
         r.add(|| ui::RectangleView{
             frame: ui::Frame{ x: 0, y: 0, width: 128, height: 32 },
             fill: ui::FillMode::Fill,
@@ -72,7 +71,7 @@ pub extern "C" fn rust_main() {
     // });
     let mut state = AppState{};
 
-    let mut ui = UiMiddleware::new();
+    let mut ui = ui::Middleware::new();
 
     MessageLoop::new().for_each(|ch| {
         let ch = Some(ch)

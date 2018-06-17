@@ -9,11 +9,11 @@ use seproxyhal::status::{
     ScreenDisplayTextStatus, ScreenDisplaySystemIconStatus, ScreenDisplayCustomIconStatus,
 };
 
-pub struct UiMiddleware {
+pub struct Middleware {
     current_view: usize,
 }
 
-impl UiMiddleware {
+impl Middleware {
     pub fn new() -> Self {
         Self{
             current_view: 0,
@@ -21,7 +21,7 @@ impl UiMiddleware {
     }
 
     pub fn process_event<D>(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel>
-        where D: UiDelegate
+        where D: Delegate
     {
         if let Event::DisplayProcessed(_) = ch.event {
             self.current_view += 1;
@@ -39,7 +39,7 @@ impl UiMiddleware {
         }
 
         // See if there's another view to render
-        let mut renderer = UiDisplayList::new(self.current_view);
+        let mut renderer = DisplayList::new(self.current_view);
         delegate.render(&mut renderer);
         if let Some(ref view) = renderer.target_view {
             let status = view.to_display_status().into();
@@ -51,13 +51,13 @@ impl UiMiddleware {
     }
 }
 
-pub struct UiDisplayList<'a> {
+pub struct DisplayList<'a> {
     target_index: usize,
     current_index: usize,
     target_view: Option<View<'a>>,
 }
 
-impl<'a> UiDisplayList<'a> {
+impl<'a> DisplayList<'a> {
     fn new(target_index: usize) -> Self {
         Self{
             target_index: target_index,
@@ -77,8 +77,8 @@ impl<'a> UiDisplayList<'a> {
     }
 }
 
-pub trait UiDelegate {
-    fn render(&mut self, renderer: &mut UiDisplayList);
+pub trait Delegate {
+    fn render(&mut self, renderer: &mut DisplayList);
 }
 
 pub enum FillMode {
