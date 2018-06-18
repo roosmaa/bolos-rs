@@ -7,12 +7,12 @@
 
 extern crate byteorder;
 
-mod error;
+pub mod error;
 mod syscall;
 mod panic;
-mod seproxyhal;
-mod ui;
-mod pic;
+pub mod seproxyhal;
+pub mod ui;
+pub mod pic;
 
 use seproxyhal::MessageLoop;
 use seproxyhal::event::Event;
