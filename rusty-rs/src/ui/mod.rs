@@ -224,7 +224,7 @@ impl<'a, A> Controller<'a, A>
 {
     fn new(target_index: usize) -> Self {
         Self{
-            target_index: target_index,
+            target_index,
             current_index: 0,
             target_view: None,
             button_actions: Default::default(),
@@ -325,7 +325,7 @@ impl RectangleView {
 
         ScreenDisplayShapeStatus{
             type_id: ScreenDisplayStatusTypeId::Rectangle,
-            user_id: user_id,
+            user_id,
             x: this.frame.x,
             y: this.frame.y,
             width: this.frame.width,
@@ -408,7 +408,7 @@ impl<'a> IconView<'a> {
         match this.icon {
             Icon::Custom(ref icon) => {
                 ScreenDisplayCustomIconStatus{
-                    user_id: user_id,
+                    user_id,
                     x: this.frame.x,
                     y: this.frame.y,
                     width: this.frame.width,
@@ -420,7 +420,7 @@ impl<'a> IconView<'a> {
             },
             Icon::System(ref icon) => {
                 ScreenDisplaySystemIconStatus{
-                    user_id: user_id,
+                    user_id,
                     x: this.frame.x,
                     y: this.frame.y,
                     width: this.frame.width,
@@ -570,17 +570,17 @@ impl<'a, A> LabelLineView<'a, A> {
 
         ScreenDisplayTextStatus{
             type_id: ScreenDisplayStatusTypeId::LabelLine,
-            user_id: user_id,
+            user_id,
             x: this.frame.x,
             y: this.frame.y,
             width: this.frame.width,
             height: this.frame.height,
-            scroll_delay: scroll_delay,
-            scroll_speed: scroll_speed,
+            scroll_delay,
+            scroll_speed,
             fill: this.fill.to_wire_format(),
             foreground_color: this.foreground.to_wire_format(),
             background_color: this.background.to_wire_format(),
-            font_id: font_id,
+            font_id,
             text: this.text,
         }.into()
     }

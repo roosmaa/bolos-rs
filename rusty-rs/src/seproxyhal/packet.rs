@@ -151,7 +151,7 @@ pub struct FourByteIterator {
 impl FourByteIterator {
     pub fn new(data: [u8; 4]) -> Self {
         Self{
-            data: data,
+            data,
             n: 0,
         }
     }

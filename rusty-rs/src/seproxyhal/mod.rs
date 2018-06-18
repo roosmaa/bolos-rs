@@ -66,7 +66,7 @@ pub struct Channel {
 impl Channel {
     fn new(event: Event) -> Self {
         Self{
-            event: event,
+            event,
             status_sent: false,
         }
     }
