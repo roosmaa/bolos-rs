@@ -4,12 +4,10 @@ pub mod event;
 pub mod command;
 pub mod status;
 
-use error::SystemError;
-use syscall::{check_api_level, io_seproxyhal_spi_recv, io_seproxyhal_spi_send, io_seproxyhal_spi_is_status_sent};
+use syscall::{check_api_level, io_seproxyhal_spi_recv, io_seproxyhal_spi_is_status_sent};
 use self::event::Event;
 use self::command::Command;
 use self::status::Status;
-use self::packet::Packet;
 
 const CX_COMPAT_APILEVEL: u32 = 8;
 
@@ -58,23 +56,6 @@ impl Iterator for MessageLoop {
     }
 }
 
-fn send_packet<T: Packet>(packet: T) -> Result<(), SystemError> {
-    let total = packet.bytes_size() as usize;
-    let mut offset = 0;
-    let mut buf = [0; 64];
-
-    while offset < total {
-        let n = packet.to_bytes(&mut buf, offset);
-        offset += n;
-
-        if let Err(err) = io_seproxyhal_spi_send(&buf[0..n]) {
-            return Err(err);
-        }
-    }
-
-    Ok(())
-}
-
 pub struct Channel {
     pub event: Event,
     status_sent: bool,
@@ -89,12 +70,12 @@ impl Channel {
     }
 
     pub fn send_command(&mut self, command: Command) {
-        send_packet(command).expect("Failed to send command")
+        packet::send(command).expect("Failed to send command")
     }
 
     pub fn send_status(mut self, status: Status) {
         self.status_sent = true;
-        send_packet(status).expect("Failed to send status")
+        packet::send(status).expect("Failed to send status")
     }
 }
 
@@ -103,7 +84,7 @@ impl Drop for Channel {
         // Send a general status when the app-level code failed to
         // send a response
         if !self.status_sent {
-            send_packet(status::GeneralStatus{}).is_ok();
+            packet::send(status::GeneralStatus{}).is_ok();
         }
     }
 }

@@ -1,6 +1,26 @@
+use error::SystemError;
+use syscall::io_seproxyhal_spi_send;
+
 pub trait Packet {
     fn bytes_size(&self) -> u16;
     fn to_bytes(&self, buf: &mut [u8], offset: usize) -> usize;
+}
+
+pub fn send<T: Packet>(packet: T) -> Result<(), SystemError> {
+    let total = packet.bytes_size() as usize;
+    let mut offset = 0;
+    let mut buf = [0; 64];
+
+    while offset < total {
+        let n = packet.to_bytes(&mut buf, offset);
+        offset += n;
+
+        if let Err(err) = io_seproxyhal_spi_send(&buf[0..n]) {
+            return Err(err);
+        }
+    }
+
+    Ok(())
 }
 
 #[macro_export]
