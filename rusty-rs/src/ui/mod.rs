@@ -108,7 +108,13 @@ impl<A, D> Middleware<A, D>
 
             match view {
                 View::LabelLine(LabelLineView{
-                    scroll: ScrollMode::Once{ finished_action, .. },
+                    scroll: ScrollMode::Once{
+                        on_finished: Some(ScrollFinishedEvent{
+                            action,
+                            ..
+                        }),
+                        ..
+                    },
                     ..
                 }) => {
                     let scroll_time = if let View::LabelLine(ref v) = view {
@@ -445,12 +451,28 @@ impl<'a, A> Into<View<'a, A>> for IconView<'a> {
     }
 }
 
+pub struct ScrollFinishedEvent<A> {
+    minimum_time: usize,
+    additional_time: usize,
+    action: A,
+}
+
+impl<A> From<A> for ScrollFinishedEvent<A> {
+    fn from(action: A) -> Self {
+        Self{
+            minimum_time: 3000,
+            additional_time: 1000,
+            action,
+        }
+    }
+}
+
 pub enum ScrollMode<A> {
     Disabled,
     Once{
         delay: u8,
         speed: u8,
-        finished_action: Option<A>,
+        on_finished: Option<ScrollFinishedEvent<A>>,
     },
     Infinite{
         delay: u8,
@@ -567,9 +589,15 @@ impl<'a, A> LabelLineView<'a, A> {
         let this = self.pic();
 
         match this.scroll {
-            ScrollMode::Disabled => None,
-            ScrollMode::Infinite{ .. } => None,
-            ScrollMode::Once{ delay, speed, .. } => {
+            ScrollMode::Once{
+                delay,
+                speed,
+                on_finished: Some(ScrollFinishedEvent{
+                    minimum_time,
+                    additional_time,
+                    ..
+                }),
+            } => {
                 let text_width = this.font.width_for_text(this.text);
                 let speed = speed as usize;
                 let delay = delay as usize;
@@ -581,8 +609,9 @@ impl<'a, A> LabelLineView<'a, A> {
                     0
                 };
 
-                Some(max(3000, 1000 + scroll_time))
+                Some(max(minimum_time, additional_time + scroll_time))
             },
+            _ => None,
         }
     }
 }

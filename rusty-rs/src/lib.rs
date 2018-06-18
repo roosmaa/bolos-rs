@@ -85,7 +85,7 @@ impl ui::Delegate for AppState {
             scroll: ui::ScrollMode::Once{
                 delay: 10,
                 speed: 26,
-                finished_action: None,
+                on_finished: Some(ui::BasicAction::Next.into()),
             },
             text: "Rust",
             ..Default::default()
