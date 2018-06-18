@@ -1,5 +1,6 @@
 mod bolos;
 
+use core::cmp::max;
 use core::marker::PhantomData;
 use core::convert::Into;
 use pic::Pic;
@@ -107,12 +108,18 @@ impl<A, D> Middleware<A, D>
 
             match view {
                 View::LabelLine(LabelLineView{
-                    scroll: ScrollMode::Once{ speed, delay, finished_action },
-                    text,
+                    scroll: ScrollMode::Once{ finished_action, .. },
                     ..
                 }) => {
-                    // TODO: Calculate the time it would take for that text to scroll and register the action
-                    let _ = (speed, delay, finished_action, text);
+                    let scroll_time = if let View::LabelLine(ref v) = view {
+                        v.estimate_scroll_time()
+                    } else {
+                        None
+                    };
+
+                    if let Some(scroll_time) = scroll_time {
+                        // TODO: Register the action
+                    }
                 },
 
                 _ => {},
@@ -454,23 +461,11 @@ pub enum ScrollMode<A> {
 impl<A> ScrollMode<A> {
     fn to_wire_format(&self) -> (u8, u8) {
         let this = self.pic();
-        let scroll_delay;
-        let scroll_speed;
         match this {
-            &ScrollMode::Disabled => {
-                scroll_delay = 0;
-                scroll_speed = 0;
-            },
-            &ScrollMode::Once{ delay, speed, .. } => {
-                scroll_delay = delay | 0x80;
-                scroll_speed = speed;
-            },
-            &ScrollMode::Infinite{ delay, speed } => {
-                scroll_delay = delay;
-                scroll_speed = speed;
-            },
-        };
-        (scroll_delay, scroll_speed)
+            &ScrollMode::Disabled => (0, 0),
+            &ScrollMode::Once{ delay, speed, .. } => (delay | 0x80, speed),
+            &ScrollMode::Infinite{ delay, speed } => (delay, speed),
+        }
     }
 }
 
@@ -523,6 +518,11 @@ impl TextFont {
             &TextFont::OpenSansExtraBold11px => 8,
         }
     }
+
+    fn width_for_text(&self, text: &str) -> usize {
+        let avg_char_width = 7;
+        text.chars().count() * avg_char_width
+    }
 }
 
 pub struct LabelLineView<'a, A> {
@@ -561,6 +561,29 @@ impl<'a, A> LabelLineView<'a, A> {
             font_id: font_id,
             text: this.text,
         }.into()
+    }
+
+    fn estimate_scroll_time(&self) -> Option<usize> {
+        let this = self.pic();
+
+        match this.scroll {
+            ScrollMode::Disabled => None,
+            ScrollMode::Infinite{ .. } => None,
+            ScrollMode::Once{ delay, speed, .. } => {
+                let text_width = this.font.width_for_text(this.text);
+                let speed = speed as usize;
+                let delay = delay as usize;
+                let view_width = this.frame.width as usize;
+
+                let scroll_time = if text_width > view_width {
+                    2 * (text_width - view_width) * 1000 / speed + 2 * delay * 100
+                } else {
+                    0
+                };
+
+                Some(max(3000, 1000 + scroll_time))
+            },
+        }
     }
 }
 
