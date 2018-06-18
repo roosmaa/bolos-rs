@@ -1,9 +1,10 @@
 mod bolos;
 
-use core::cmp::max;
+use core::cmp::{min, max};
 use core::marker::PhantomData;
 use core::convert::Into;
 use pic::Pic;
+use time::Duration;
 use seproxyhal::Channel;
 use seproxyhal::event::{Event, ButtonPushEvent};
 use seproxyhal::status::{
@@ -57,11 +58,38 @@ impl<A> Into<ButtonActionMap<A>> for ButtonAction<A>
     }
 }
 
+pub enum AutoAction<A> {
+    Countdown{
+        min_wait_time: Option<Duration>,
+        max_wait_time: Option<Duration>,
+        wait_time: Duration,
+        wait_for_scroll: bool,
+        action: A,
+    },
+    None,
+}
+
+struct ScheduledAction<A> {
+    time_left: Duration,
+    action: A,
+}
+
+impl<A> ScheduledAction<A> {
+    fn new(time: Duration, action: A) -> Self {
+        Self{
+            time_left: time,
+            action,
+        }
+    }
+}
+
 pub struct Middleware<A, D> {
     current_view_index: usize,
     button_actions: ButtonActionMap<A>,
     button_bits: u8,
     button_timer: usize,
+    max_scroll_time: Duration,
+    auto_action: Option<ScheduledAction<A>>,
     phantom_delegate: PhantomData<D>,
 }
 
@@ -75,6 +103,8 @@ impl<A, D> Middleware<A, D>
             button_actions: Default::default(),
             button_bits: 0,
             button_timer: 0,
+            max_scroll_time: Duration::zero(),
+            auto_action: None,
             phantom_delegate: PhantomData,
         }
     }
@@ -83,6 +113,8 @@ impl<A, D> Middleware<A, D>
         let this = self.pic();
         this.current_view_index = 0;
         this.button_actions = Default::default();
+        this.max_scroll_time = Duration::zero();
+        this.auto_action = None;
     }
 
     fn send_next_view(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel>
@@ -106,29 +138,14 @@ impl<A, D> Middleware<A, D>
         if let Some(ref view) = ctrl.target_view {
             this.button_actions = ctrl.button_actions;
 
-            match view {
-                View::LabelLine(LabelLineView{
-                    scroll: ScrollMode::Once{
-                        on_finished: Some(ScrollFinishedEvent{
-                            action,
-                            ..
-                        }),
-                        ..
-                    },
-                    ..
-                }) => {
-                    let scroll_time = if let View::LabelLine(ref v) = view {
-                        v.estimate_scroll_time()
-                    } else {
-                        None
-                    };
+            let scroll_time = if let View::LabelLine(ref v) = view {
+                v.estimate_scroll_time()
+            } else {
+                None
+            };
 
-                    if let Some(scroll_time) = scroll_time {
-                        // TODO: Register the action
-                    }
-                },
-
-                _ => {},
+            if let Some(scroll_time) = scroll_time {
+                this.max_scroll_time = max(this.max_scroll_time, scroll_time);
             }
 
             let status = view.to_display_status(0).into();
@@ -136,6 +153,29 @@ impl<A, D> Middleware<A, D>
 
             None
         } else {
+            if let AutoAction::Countdown{
+                min_wait_time,
+                max_wait_time,
+                wait_time,
+                wait_for_scroll,
+                action,
+            } = ctrl.auto_action {
+                let mut time = wait_time;
+                if wait_for_scroll {
+                    time += this.max_scroll_time;
+                }
+                if let Some(min_wait_time) = min_wait_time {
+                    time = min(time, min_wait_time);
+                }
+                if let Some(max_wait_time) = max_wait_time {
+                    time = max(time, max_wait_time);
+                }
+                this.auto_action = Some(ScheduledAction{
+                    time_left: time,
+                    action: action,
+                });
+            }
+
             Some(ch)
         }
     }
@@ -215,8 +255,9 @@ impl<A, D> Middleware<A, D>
 pub struct Controller<'a, A: Copy> {
     target_index: usize,
     current_index: usize,
-    target_view: Option<View<'a, A>>,
+    target_view: Option<View<'a>>,
     button_actions: ButtonActionMap<A>,
+    auto_action: AutoAction<A>,
 }
 
 impl<'a, A> Controller<'a, A>
@@ -228,12 +269,13 @@ impl<'a, A> Controller<'a, A>
             current_index: 0,
             target_view: None,
             button_actions: Default::default(),
+            auto_action: AutoAction::None,
         }
     }
 
     #[inline(always)]
     pub fn add_view<F>(&mut self, lazy_view: F)
-        where F: FnOnce() -> View<'a, A>
+        where F: FnOnce() -> View<'a>
     {
         let this = self.pic();
         if this.target_index == this.current_index {
@@ -245,6 +287,11 @@ impl<'a, A> Controller<'a, A>
     pub fn set_button_actions(&mut self, actions: ButtonAction<A>) {
         let this = self.pic();
         this.button_actions = actions.into();
+    }
+
+    pub fn set_auto_action(&mut self, auto_action: AutoAction<A>) {
+        let this = self.pic();
+        this.auto_action = auto_action;
     }
 }
 
@@ -352,8 +399,8 @@ impl Default for RectangleView {
     }
 }
 
-impl<'a, A> Into<View<'a, A>> for RectangleView {
-    fn into(self) -> View<'a, A> {
+impl<'a> Into<View<'a>> for RectangleView {
+    fn into(self) -> View<'a> {
         View::Rectangle(self)
     }
 }
@@ -445,8 +492,8 @@ impl<'a> Default for IconView<'a> {
     }
 }
 
-impl<'a, A> Into<View<'a, A>> for IconView<'a> {
-    fn into(self) -> View<'a, A> {
+impl<'a> Into<View<'a>> for IconView<'a> {
+    fn into(self) -> View<'a> {
         View::Icon(self)
     }
 }
@@ -467,26 +514,19 @@ impl<A> From<A> for ScrollFinishedEvent<A> {
     }
 }
 
-pub enum ScrollMode<A> {
+pub enum ScrollMode {
     Disabled,
-    Once{
-        delay: u8,
-        speed: u8,
-        on_finished: Option<ScrollFinishedEvent<A>>,
-    },
-    Infinite{
-        delay: u8,
-        speed: u8,
-    },
+    Once{ delay_secs: u8, speed: u8 },
+    Infinite{ delay_secs: u8, speed: u8 },
 }
 
-impl<A> ScrollMode<A> {
+impl ScrollMode {
     fn to_wire_format(&self) -> (u8, u8) {
         let this = self.pic();
         match this {
             &ScrollMode::Disabled => (0, 0),
-            &ScrollMode::Once{ delay, speed, .. } => (delay | 0x80, speed),
-            &ScrollMode::Infinite{ delay, speed } => (delay, speed),
+            &ScrollMode::Once{ delay_secs, speed } => (delay_secs | 0x80, speed),
+            &ScrollMode::Infinite{ delay_secs, speed } => (delay_secs, speed),
         }
     }
 }
@@ -543,23 +583,23 @@ impl TextFont {
 
     fn width_for_text(&self, text: &str) -> usize {
         let avg_char_width = 7;
-        text.chars().count() * avg_char_width
+        text.pic().chars().count() * avg_char_width
     }
 }
 
-pub struct LabelLineView<'a, A> {
+pub struct LabelLineView<'a> {
     pub frame: Frame,
     pub font: TextFont,
     pub horizontal_alignment: TextHorizontalAlignment,
     pub vertical_alignment: TextVerticalAlignment,
-    pub scroll: ScrollMode<A>,
+    pub scroll: ScrollMode,
     pub foreground: Color,
     pub background: Color,
     pub fill: FillMode,
     pub text: &'a str,
 }
 
-impl<'a, A> LabelLineView<'a, A> {
+impl<'a> LabelLineView<'a> {
     fn to_display_status(&self, user_id: u8) -> ScreenDisplayStatus {
         let this = self.pic();
 
@@ -585,38 +625,31 @@ impl<'a, A> LabelLineView<'a, A> {
         }.into()
     }
 
-    fn estimate_scroll_time(&self) -> Option<usize> {
+    fn estimate_scroll_time(&self) -> Option<Duration> {
         let this = self.pic();
 
         match this.scroll {
-            ScrollMode::Once{
-                delay,
-                speed,
-                on_finished: Some(ScrollFinishedEvent{
-                    minimum_time,
-                    additional_time,
-                    ..
-                }),
-            } => {
+            ScrollMode::Once{ delay_secs, speed } => {
                 let text_width = this.font.width_for_text(this.text);
                 let speed = speed as usize;
-                let delay = delay as usize;
+                let delay_secs = delay_secs as usize;
                 let view_width = this.frame.width as usize;
 
                 let scroll_time = if text_width > view_width {
-                    2 * (text_width - view_width) * 1000 / speed + 2 * delay * 100
+                    2 * Duration::from_millis((text_width - view_width) * 1000 / speed)
+                        + 2 * Duration::from_secs(delay_secs)
                 } else {
-                    0
+                    Duration::zero()
                 };
 
-                Some(max(minimum_time, additional_time + scroll_time))
+                Some(scroll_time)
             },
             _ => None,
         }
     }
 }
 
-impl<'a, A> Default for LabelLineView<'a, A> {
+impl<'a> Default for LabelLineView<'a> {
     fn default() -> Self {
         Self{
             frame: Default::default(),
@@ -632,19 +665,19 @@ impl<'a, A> Default for LabelLineView<'a, A> {
     }
 }
 
-impl<'a, A> Into<View<'a, A>> for LabelLineView<'a, A> {
-    fn into(self) -> View<'a, A> {
+impl<'a> Into<View<'a>> for LabelLineView<'a> {
+    fn into(self) -> View<'a> {
         View::LabelLine(self)
     }
 }
 
-pub enum View<'a, A> {
+pub enum View<'a> {
     Rectangle(RectangleView),
     Icon(IconView<'a>),
-    LabelLine(LabelLineView<'a, A>),
+    LabelLine(LabelLineView<'a>),
 }
 
-impl<'a, A> View<'a, A> {
+impl<'a> View<'a> {
     fn to_display_status(&self, user_id: u8) -> ScreenDisplayStatus {
         let this = self.pic();
         match this {

@@ -10,6 +10,7 @@ extern crate byteorder;
 pub mod error;
 mod syscall;
 mod panic;
+pub mod time;
 pub mod seproxyhal;
 pub mod ui;
 pub mod pic;
@@ -17,6 +18,7 @@ pub mod pic;
 use pic::Pic;
 use seproxyhal::MessageLoop;
 use syscall::os_sched_exit;
+use time::Duration;
 
 enum UiState {
     Welcome,
@@ -55,6 +57,13 @@ impl ui::Delegate for AppState {
         this.ui_updated = false;
 
         ctrl.set_button_actions(ui::ButtonAction::ForAll(ui::BasicAction::Previous));
+        ctrl.set_auto_action(ui::AutoAction::Countdown{
+            min_wait_time: Some(Duration::from_millis(3000)),
+            max_wait_time: Some(Duration::from_secs(10)),
+            wait_time: Duration::from_millis(1000),
+            wait_for_scroll: true,
+            action: ui::BasicAction::Next,
+        });
 
         ctrl.add_view(|| ui::RectangleView{
             frame: ui::Frame{ x: 0, y: 0, width: 128, height: 32 },
@@ -82,11 +91,7 @@ impl ui::Delegate for AppState {
             frame: ui::Frame{ x: 23, y: 26, width: 82, height: 12 },
             font: ui::TextFont::OpenSansRegular11px,
             horizontal_alignment: ui::TextHorizontalAlignment::Center,
-            scroll: ui::ScrollMode::Once{
-                delay: 10,
-                speed: 26,
-                on_finished: Some(ui::BasicAction::Next.into()),
-            },
+            scroll: ui::ScrollMode::Once{ delay_secs: 10, speed: 26 },
             text: "Rust",
             ..Default::default()
         }.into());
