@@ -83,9 +83,10 @@ impl Channel {
 
 impl Drop for Channel {
     fn drop(&mut self) {
+        let this = self.pic();
         // Send a general status when the app-level code failed to
         // send a response
-        if !self.status_sent {
+        if !this.status_sent {
             packet::send(status::GeneralStatus{}).is_ok();
         }
     }

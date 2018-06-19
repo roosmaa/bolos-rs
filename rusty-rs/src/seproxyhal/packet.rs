@@ -1,3 +1,4 @@
+use pic::Pic;
 use error::SystemError;
 use syscall::io_seproxyhal_spi_send;
 
@@ -160,10 +161,11 @@ impl Iterator for FourByteIterator {
     type Item = u8;
 
     fn next(&mut self) -> Option<u8> {
-        let n = self.n;
-        if n < self.data.len() {
-            self.n += 1;
-            Some(self.data[n])
+        let this = self.pic();
+        let n = this.n;
+        if n < this.data.len() {
+            this.n += 1;
+            Some(this.data[n])
         } else {
             None
         }
