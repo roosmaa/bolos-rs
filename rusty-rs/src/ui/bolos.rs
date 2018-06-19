@@ -16,18 +16,23 @@ fn invoke_ux(params: &[u8]) -> Response {
         .unwrap_or(Response::Error)
 }
 
+
 pub fn event() -> Response {
-    invoke_ux(&[
+    let params = [
         UxType::Event as u8,
         0,
-    ])
+    ];
+    // TODO: Experiment with ROPI/PIC by triggering a crash that happens
+    //       when the params array is inlined below
+    invoke_ux(&params)
 }
 
 pub fn wake_up() -> Response {
-    invoke_ux(&[
+    let params = [
         UxType::Event as u8,
         0,
-    ])
+    ];
+    invoke_ux(&params)
 }
 
 #[repr(u32)]

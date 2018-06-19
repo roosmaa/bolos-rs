@@ -1,3 +1,6 @@
 [build]
 target="thumbv6m-none-eabi"
-rustflags = ["-C", "target-feature=+reserve-r9"]
+rustflags = [
+    "-C", "target-feature=+reserve-r9",
+    "-C", "relocation-model=ropi",
+]
