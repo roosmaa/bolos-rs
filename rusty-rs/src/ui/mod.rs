@@ -180,7 +180,7 @@ impl<A, D> Middleware<A, D>
         }
     }
 
-    fn process_button_presses(&mut self, mut button_bits: u8, delegate: &mut D) {
+    fn process_button_presses(&mut self, button_bits: u8, delegate: &mut D) {
         let this = self.pic();
 
         const KEY_REPEAT_THRESHOLD: usize = 8; // 800ms
@@ -189,19 +189,21 @@ impl<A, D> Middleware<A, D>
         const RIGHT_BUTTON: u8 = 1 << 1;
         const BOTH_BUTTONS: u8 = LEFT_BUTTON | RIGHT_BUTTON;
         let is_released = button_bits == 0;
+        let previous_bits = this.button_bits;
 
         if this.button_bits == button_bits {
             this.button_timer += 1; // once every ~100ms
-        } else if !is_released {
-            // Reset when the bits change
+        } else {
             this.button_timer = 0;
+            if button_bits != 0 {
+                this.button_bits |= button_bits;
+            } else {
+                this.button_bits = 0;
+            }
         }
 
         let (pressed_bits, repeating) = if is_released {
-            button_bits = this.button_bits;
-            this.button_bits = 0;
-            this.button_timer = 0;
-            (button_bits, false)
+            (previous_bits, false)
         } else if this.button_timer > KEY_REPEAT_THRESHOLD
             && this.button_timer % KEY_REPEAT_DELAY == 0 {
             (button_bits, true)

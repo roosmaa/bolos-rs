@@ -56,7 +56,11 @@ impl ui::Delegate for AppState {
         let this = self.pic();
         this.ui_updated = false;
 
-        ctrl.set_button_actions(ui::ButtonAction::ForAll(ui::BasicAction::Previous));
+        ctrl.set_button_actions(ui::ButtonAction::Map{
+            left: None,
+            right: Some(ui::BasicAction::Previous),
+            both: None,
+        });
         ctrl.set_auto_action(ui::AutoAction::Countdown{
             min_wait_time: Some(Duration::from_millis(3000)),
             max_wait_time: Some(Duration::from_secs(10)),
