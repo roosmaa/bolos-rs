@@ -544,8 +544,8 @@ impl TextHorizontalAlignment {
         let this = self.pic();
         match this {
             &TextHorizontalAlignment::Left => 0x0000,
-            &TextHorizontalAlignment::Center => 0x4000,
-            &TextHorizontalAlignment::Right => 0x8000,
+            &TextHorizontalAlignment::Center => 0x8000,
+            &TextHorizontalAlignment::Right => 0x4000,
         }
     }
 }
@@ -561,8 +561,8 @@ impl TextVerticalAlignment {
         let this = self.pic();
         match this {
             &TextVerticalAlignment::Top => 0x0000,
-            &TextVerticalAlignment::Middle => 0x1000,
-            &TextVerticalAlignment::Bottom => 0x2000,
+            &TextVerticalAlignment::Middle => 0x2000,
+            &TextVerticalAlignment::Bottom => 0x1000,
         }
     }
 }
