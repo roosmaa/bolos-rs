@@ -4,6 +4,7 @@ pub mod event;
 pub mod command;
 pub mod status;
 
+use pic::Pic;
 use syscall::{check_api_level, io_seproxyhal_spi_recv, io_seproxyhal_spi_is_status_sent};
 use self::event::Event;
 use self::command::Command;
@@ -30,10 +31,11 @@ impl Iterator for MessageLoop {
     type Item = Channel;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let first_loop = !self.running;
+        let this = self.pic();
+        let first_loop = !this.running;
 
         if first_loop {
-            self.running = true;
+            this.running = true;
         }
 
         let is_status_sent = if first_loop {
