@@ -108,8 +108,7 @@ impl ui::Delegate for AppState {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn rust_main() {
+fn app_main() {
     let mut state = AppState::new();
 
     let mut ui = ui::Middleware::new();
@@ -120,4 +119,21 @@ pub extern "C" fn rust_main() {
             // .and_then(|ch| apdu.handle_event(ch, &mut state));
             .and_then(|ch| ui.redraw_if_needed(ch, &mut state));
     });
+}
+
+#[no_mangle]
+#[link_section=".boot"]
+pub fn main() {
+    // App context setup
+    unsafe {
+        // Enable interrupts
+        asm!("cpsie i" :::: "volatile");
+        // Make sure that the try_context pointer isn't random garbage
+        asm!("mov r9, $0" :
+            : "r"(0)
+            : "r9"
+            : "volatile");
+    }
+
+    app_main();
 }
