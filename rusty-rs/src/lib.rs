@@ -25,19 +25,19 @@ enum UiState {
 
 struct AppState {
     ui_state: UiState,
-    ui_updated: bool,
+    ui_version: u16,
 }
 
 impl AppState {
     fn new() -> Self {
         Self{
             ui_state: UiState::Welcome,
-            ui_updated: true,
+            ui_version: 0,
         }
     }
 
     fn update_ui(&mut self, new_state: UiState) {
-        self.ui_updated = true;
+        self.ui_version += 1;
         self.ui_state = new_state;
     }
 }
@@ -45,13 +45,11 @@ impl AppState {
 impl ui::Delegate for AppState {
     type Action = ui::BasicAction;
 
-    fn should_redraw(&self) -> bool {
-        self.ui_updated
+    fn ui_version(&self) -> u16 {
+        self.ui_version
     }
 
-    fn prepare_ui(&mut self, ctrl: &mut ui::Controller<Self::Action>) {
-        self.ui_updated = false;
-
+    fn prepare_ui(&self, ctrl: &mut ui::Controller<Self::Action>) {
         ctrl.set_button_actions(ui::ButtonAction::Map{
             left: None,
             right: Some(ui::BasicAction::Previous),

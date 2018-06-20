@@ -84,6 +84,7 @@ impl<A> ScheduledAction<A> {
 }
 
 pub struct Middleware<A, D> {
+    ui_version: Option<u16>,
     current_view_index: usize,
     button_actions: ButtonActionMap<A>,
     button_bits: u8,
@@ -99,6 +100,7 @@ impl<A, D> Middleware<A, D>
 {
     pub fn new() -> Self {
         Self{
+            ui_version: None,
             current_view_index: 0,
             button_actions: Default::default(),
             button_bits: 0,
@@ -109,7 +111,12 @@ impl<A, D> Middleware<A, D>
         }
     }
 
-    fn reset_for_redraw(&mut self) {
+    fn should_redraw(&self, delegate: &D) -> bool {
+        Some(delegate.ui_version()) != self.ui_version
+    }
+
+    fn reset_for_redraw(&mut self, delegate: &D) {
+        self.ui_version = Some(delegate.ui_version());
         self.current_view_index = 0;
         self.button_actions = Default::default();
         self.max_scroll_time = Duration::zero();
@@ -120,7 +127,7 @@ impl<A, D> Middleware<A, D>
         // Coordinate our rendering with the system UI
         match bolos::event() {
             bolos::Response::Redraw => {
-                self.reset_for_redraw();
+                self.reset_for_redraw(delegate);
             },
             bolos::Response::Ignore | bolos::Response::Continue => {
                 return Some(ch);
@@ -228,17 +235,17 @@ impl<A, D> Middleware<A, D>
             _ => {},
         }
 
-        if delegate.should_redraw() {
+        if self.should_redraw(delegate) {
             bolos::wake_up();
-            self.reset_for_redraw();
+            self.reset_for_redraw(delegate);
         }
         self.send_next_view(ch, delegate)
     }
 
     pub fn redraw_if_needed(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel> {
-        if delegate.should_redraw() {
+        if self.should_redraw(delegate) {
             bolos::wake_up();
-            self.reset_for_redraw();
+            self.reset_for_redraw(delegate);
             self.send_next_view(ch, delegate)
         } else {
             Some(ch)
@@ -296,8 +303,8 @@ pub enum BasicAction {
 pub trait Delegate {
     type Action: Copy;
 
-    fn prepare_ui(&mut self, ctrl: &mut Controller<Self::Action>);
-    fn should_redraw(&self) -> bool;
+    fn ui_version(&self) -> u16;
+    fn prepare_ui(&self, ctrl: &mut Controller<Self::Action>);
     fn process_action(&mut self, _action: Self::Action) {}
 }
 
