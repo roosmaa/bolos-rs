@@ -229,6 +229,7 @@ impl<A, D> Middleware<A, D>
         }
 
         if delegate.should_redraw() {
+            bolos::wake_up();
             self.reset_for_redraw();
         }
         self.send_next_view(ch, delegate)
@@ -236,6 +237,7 @@ impl<A, D> Middleware<A, D>
 
     pub fn redraw_if_needed(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel> {
         if delegate.should_redraw() {
+            bolos::wake_up();
             self.reset_for_redraw();
             self.send_next_view(ch, delegate)
         } else {

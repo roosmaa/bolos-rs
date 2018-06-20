@@ -3,7 +3,7 @@ use syscall;
 #[repr(u8)]
 enum UxType {
     Event = 1,
-    WakeUp = 2,
+    WakeUp = 3,
 }
 
 #[inline(always)]
@@ -29,7 +29,7 @@ pub fn event() -> Response {
 
 pub fn wake_up() -> Response {
     let params = [
-        UxType::Event as u8,
+        UxType::WakeUp as u8,
         0,
     ];
     invoke_ux(&params)
