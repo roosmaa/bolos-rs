@@ -4,7 +4,6 @@ pub mod event;
 pub mod command;
 pub mod status;
 
-use pic::Pic;
 use syscall::{check_api_level, io_seproxyhal_spi_recv, io_seproxyhal_spi_is_status_sent};
 use self::event::Event;
 use self::command::Command;
@@ -31,11 +30,10 @@ impl Iterator for MessageLoop {
     type Item = Channel;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let this = self.pic();
-        let first_loop = !this.running;
+        let first_loop = !self.running;
 
         if first_loop {
-            this.running = true;
+            self.running = true;
         }
 
         let is_status_sent = if first_loop {
@@ -83,10 +81,9 @@ impl Channel {
 
 impl Drop for Channel {
     fn drop(&mut self) {
-        let this = self.pic();
         // Send a general status when the app-level code failed to
         // send a response
-        if !this.status_sent {
+        if !self.status_sent {
             packet::send(status::GeneralStatus{}).is_ok();
         }
     }

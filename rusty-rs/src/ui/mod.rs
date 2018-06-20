@@ -110,20 +110,17 @@ impl<A, D> Middleware<A, D>
     }
 
     fn reset_for_redraw(&mut self) {
-        let this = self.pic();
-        this.current_view_index = 0;
-        this.button_actions = Default::default();
-        this.max_scroll_time = Duration::zero();
-        this.auto_action = None;
+        self.current_view_index = 0;
+        self.button_actions = Default::default();
+        self.max_scroll_time = Duration::zero();
+        self.auto_action = None;
     }
 
     fn send_next_view(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel> {
-        let this = self.pic();
-
         // Coordinate our rendering with the system UI
         match bolos::event() {
             bolos::Response::Redraw => {
-                this.reset_for_redraw();
+                self.reset_for_redraw();
             },
             bolos::Response::Ignore | bolos::Response::Continue => {
                 return Some(ch);
@@ -132,7 +129,7 @@ impl<A, D> Middleware<A, D>
         }
 
         // See if there's another view to render
-        let mut ctrl = Controller::new(this.current_view_index);
+        let mut ctrl = Controller::new(self.current_view_index);
         delegate.prepare_ui(&mut ctrl);
         if let Some(ref view) = ctrl.target_view {
             let scroll_time = if let View::LabelLine(ref v) = view {
@@ -142,7 +139,7 @@ impl<A, D> Middleware<A, D>
             };
 
             if let Some(scroll_time) = scroll_time {
-                this.max_scroll_time = max(this.max_scroll_time, scroll_time);
+                self.max_scroll_time = max(self.max_scroll_time, scroll_time);
             }
 
             let status = view.to_display_status(0).into();
@@ -150,7 +147,7 @@ impl<A, D> Middleware<A, D>
 
             None
         } else {
-            this.button_actions = ctrl.button_actions;
+            self.button_actions = ctrl.button_actions;
 
             if let AutoAction::Countdown{
                 min_wait_time,
@@ -161,7 +158,7 @@ impl<A, D> Middleware<A, D>
             } = ctrl.auto_action {
                 let mut time = wait_time;
                 if wait_for_scroll {
-                    time += this.max_scroll_time;
+                    time += self.max_scroll_time;
                 }
                 if let Some(min_wait_time) = min_wait_time {
                     time = min(time, min_wait_time);
@@ -169,7 +166,7 @@ impl<A, D> Middleware<A, D>
                 if let Some(max_wait_time) = max_wait_time {
                     time = max(time, max_wait_time);
                 }
-                this.auto_action = Some(ScheduledAction{
+                self.auto_action = Some(ScheduledAction{
                     time_left: time,
                     action: action,
                 });
@@ -180,40 +177,38 @@ impl<A, D> Middleware<A, D>
     }
 
     fn process_button_presses(&mut self, button_bits: u8, delegate: &mut D) {
-        let this = self.pic();
-
         const KEY_REPEAT_THRESHOLD: usize = 8; // 800ms
         const KEY_REPEAT_DELAY: usize = 3; // 300ms
         const LEFT_BUTTON: u8 = 1 << 0;
         const RIGHT_BUTTON: u8 = 1 << 1;
         const BOTH_BUTTONS: u8 = LEFT_BUTTON | RIGHT_BUTTON;
         let is_released = button_bits == 0;
-        let previous_bits = this.button_bits;
+        let previous_bits = self.button_bits;
 
-        if this.button_bits == button_bits {
-            this.button_timer += 1; // once every ~100ms
+        if self.button_bits == button_bits {
+            self.button_timer += 1; // once every ~100ms
         } else {
-            this.button_timer = 0;
+            self.button_timer = 0;
             if button_bits != 0 {
-                this.button_bits |= button_bits;
+                self.button_bits |= button_bits;
             } else {
-                this.button_bits = 0;
+                self.button_bits = 0;
             }
         }
 
         let (pressed_bits, repeating) = if is_released {
             (previous_bits, false)
-        } else if this.button_timer > KEY_REPEAT_THRESHOLD
-            && this.button_timer % KEY_REPEAT_DELAY == 0 {
+        } else if self.button_timer > KEY_REPEAT_THRESHOLD
+            && self.button_timer % KEY_REPEAT_DELAY == 0 {
             (button_bits, true)
         } else {
             (0, false)
         };
 
         let action = match (pressed_bits, repeating) {
-            (LEFT_BUTTON, _) => this.button_actions.left,
-            (RIGHT_BUTTON, _) => this.button_actions.right,
-            (BOTH_BUTTONS, false) => this.button_actions.both,
+            (LEFT_BUTTON, _) => self.button_actions.left,
+            (RIGHT_BUTTON, _) => self.button_actions.right,
+            (BOTH_BUTTONS, false) => self.button_actions.both,
             _ => None,
         };
 
@@ -223,30 +218,26 @@ impl<A, D> Middleware<A, D>
     }
 
     pub fn process_event(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel> {
-        let this = self.pic();
-
         match ch.event {
             Event::DisplayProcessed(_) => {
-                this.current_view_index += 1;
+                self.current_view_index += 1;
             },
             Event::ButtonPush(ButtonPushEvent{ flags }) => {
-                this.process_button_presses(flags >> 1, delegate);
+                self.process_button_presses(flags >> 1, delegate);
             },
             _ => {},
         }
 
         if delegate.should_redraw() {
-            this.reset_for_redraw();
+            self.reset_for_redraw();
         }
-        this.send_next_view(ch, delegate)
+        self.send_next_view(ch, delegate)
     }
 
     pub fn redraw_if_needed(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel> {
-        let this = self.pic();
-
         if delegate.should_redraw() {
-            this.reset_for_redraw();
-            this.send_next_view(ch, delegate)
+            self.reset_for_redraw();
+            self.send_next_view(ch, delegate)
         } else {
             Some(ch)
         }
@@ -278,21 +269,18 @@ impl<'a, A> Controller<'a, A>
     pub fn add_view<F>(&mut self, lazy_view: F)
         where F: FnOnce() -> View<'a>
     {
-        let this = self.pic();
-        if this.target_index == this.current_index {
-            this.target_view = lazy_view().into();
+        if self.target_index == self.current_index {
+            self.target_view = lazy_view().into();
         }
-        this.current_index += 1;
+        self.current_index += 1;
     }
 
     pub fn set_button_actions(&mut self, actions: ButtonAction<A>) {
-        let this = self.pic();
-        this.button_actions = actions.into();
+        self.button_actions = actions.into();
     }
 
     pub fn set_auto_action(&mut self, auto_action: AutoAction<A>) {
-        let this = self.pic();
-        this.auto_action = auto_action;
+        self.auto_action = auto_action;
     }
 }
 
@@ -319,8 +307,7 @@ pub enum FillMode {
 
 impl FillMode {
     fn to_wire_format(&self) -> u8 {
-        let this = self.pic();
-        match this {
+        match self {
             &FillMode::NoFill => 0,
             &FillMode::Fill => 1,
             &FillMode::Outline => 2,
@@ -332,8 +319,7 @@ pub struct Color(u32);
 
 impl Color {
     fn to_wire_format(&self) -> u32 {
-        let this = self.pic();
-        this.0
+        self.0
     }
 
     pub fn white() -> Self {
@@ -369,20 +355,18 @@ pub struct RectangleView {
 
 impl RectangleView {
     fn to_display_status(&self, user_id: u8) -> ScreenDisplayStatus {
-        let this = self.pic();
-
         ScreenDisplayShapeStatus{
             type_id: ScreenDisplayStatusTypeId::Rectangle,
             user_id,
-            x: this.frame.x,
-            y: this.frame.y,
-            width: this.frame.width,
-            height: this.frame.height,
-            stroke: this.stroke,
-            radius: this.radius,
-            fill: this.fill.to_wire_format(),
-            foreground_color: this.foreground.to_wire_format(),
-            background_color: this.background.to_wire_format(),
+            x: self.frame.x,
+            y: self.frame.y,
+            width: self.frame.width,
+            height: self.frame.height,
+            stroke: self.stroke,
+            radius: self.radius,
+            fill: self.fill.to_wire_format(),
+            foreground_color: self.foreground.to_wire_format(),
+            background_color: self.background.to_wire_format(),
         }.into()
     }
 }
@@ -413,8 +397,7 @@ pub enum SystemIcon {
 
 impl SystemIcon {
     fn to_wire_format(&self) -> u8 {
-        let this = self.pic();
-        match this {
+        match self {
             &SystemIcon::Check => 6,
             &SystemIcon::Cross => 7,
         }
@@ -451,16 +434,14 @@ pub struct IconView<'a> {
 
 impl<'a> IconView<'a> {
     fn to_display_status(&self, user_id: u8) -> ScreenDisplayStatus {
-        let this = self.pic();
-
-        match this.icon {
+        match self.icon {
             Icon::Custom(ref icon) => {
                 ScreenDisplayCustomIconStatus{
                     user_id,
-                    x: this.frame.x,
-                    y: this.frame.y,
-                    width: this.frame.width,
-                    height: this.frame.height,
+                    x: self.frame.x,
+                    y: self.frame.y,
+                    width: self.frame.width,
+                    height: self.frame.height,
                     bits_per_pixel: icon.bits_per_pixel,
                     colors: icon.colors,
                     bitmap: icon.bitmap,
@@ -469,10 +450,10 @@ impl<'a> IconView<'a> {
             Icon::System(ref icon) => {
                 ScreenDisplaySystemIconStatus{
                     user_id,
-                    x: this.frame.x,
-                    y: this.frame.y,
-                    width: this.frame.width,
-                    height: this.frame.height,
+                    x: self.frame.x,
+                    y: self.frame.y,
+                    width: self.frame.width,
+                    height: self.frame.height,
                     icon_id: icon.to_wire_format(),
                 }.into()
             },
@@ -523,8 +504,7 @@ pub enum ScrollMode {
 
 impl ScrollMode {
     fn to_wire_format(&self) -> (u8, u8) {
-        let this = self.pic();
-        match this {
+        match self {
             &ScrollMode::Disabled => (0, 0),
             &ScrollMode::Once{ delay_secs, speed } => (delay_secs | 0x80, speed),
             &ScrollMode::Infinite{ delay_secs, speed } => (delay_secs, speed),
@@ -540,8 +520,7 @@ pub enum TextHorizontalAlignment {
 
 impl TextHorizontalAlignment {
     fn to_wire_format(&self) -> u16 {
-        let this = self.pic();
-        match this {
+        match self {
             &TextHorizontalAlignment::Left => 0x0000,
             &TextHorizontalAlignment::Center => 0x8000,
             &TextHorizontalAlignment::Right => 0x4000,
@@ -557,8 +536,7 @@ pub enum TextVerticalAlignment {
 
 impl TextVerticalAlignment {
     fn to_wire_format(&self) -> u16 {
-        let this = self.pic();
-        match this {
+        match self {
             &TextVerticalAlignment::Top => 0x0000,
             &TextVerticalAlignment::Middle => 0x2000,
             &TextVerticalAlignment::Bottom => 0x1000,
@@ -574,8 +552,7 @@ pub enum TextFont {
 
 impl TextFont {
     fn to_wire_format(&self) -> u16 {
-        let this = self.pic();
-        match this {
+        match self {
             &TextFont::OpenSansLight16px => 9,
             &TextFont::OpenSansRegular11px => 10,
             &TextFont::OpenSansExtraBold11px => 8,
@@ -602,39 +579,35 @@ pub struct LabelLineView<'a> {
 
 impl<'a> LabelLineView<'a> {
     fn to_display_status(&self, user_id: u8) -> ScreenDisplayStatus {
-        let this = self.pic();
-
-        let (scroll_delay, scroll_speed) = this.scroll.to_wire_format();
-        let font_id = this.font.to_wire_format()
-            | this.horizontal_alignment.to_wire_format()
-            | this.vertical_alignment.to_wire_format();
+        let (scroll_delay, scroll_speed) = self.scroll.to_wire_format();
+        let font_id = self.font.to_wire_format()
+            | self.horizontal_alignment.to_wire_format()
+            | self.vertical_alignment.to_wire_format();
 
         ScreenDisplayTextStatus{
             type_id: ScreenDisplayStatusTypeId::LabelLine,
             user_id,
-            x: this.frame.x,
-            y: this.frame.y,
-            width: this.frame.width,
-            height: this.frame.height,
+            x: self.frame.x,
+            y: self.frame.y,
+            width: self.frame.width,
+            height: self.frame.height,
             scroll_delay,
             scroll_speed,
-            fill: this.fill.to_wire_format(),
-            foreground_color: this.foreground.to_wire_format(),
-            background_color: this.background.to_wire_format(),
+            fill: self.fill.to_wire_format(),
+            foreground_color: self.foreground.to_wire_format(),
+            background_color: self.background.to_wire_format(),
             font_id,
-            text: this.text,
+            text: self.text,
         }.into()
     }
 
     fn estimate_scroll_time(&self) -> Option<Duration> {
-        let this = self.pic();
-
-        match this.scroll {
+        match self.scroll {
             ScrollMode::Once{ delay_secs, speed } => {
-                let text_width = this.font.width_for_text(this.text);
+                let text_width = self.font.width_for_text(self.text);
                 let speed = speed as usize;
                 let delay_secs = delay_secs as usize;
-                let view_width = this.frame.width as usize;
+                let view_width = self.frame.width as usize;
 
                 let scroll_time = if text_width > view_width {
                     2 * Duration::from_millis((text_width - view_width) * 1000 / speed)
@@ -680,8 +653,7 @@ pub enum View<'a> {
 
 impl<'a> View<'a> {
     fn to_display_status(&self, user_id: u8) -> ScreenDisplayStatus {
-        let this = self.pic();
-        match this {
+        match self {
             &View::Rectangle(ref v) => v.to_display_status(user_id),
             &View::Icon(ref v) => v.to_display_status(user_id),
             &View::LabelLine(ref v) => v.to_display_status(user_id),

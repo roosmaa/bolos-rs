@@ -15,7 +15,6 @@ pub mod seproxyhal;
 pub mod ui;
 pub mod pic;
 
-use pic::Pic;
 use seproxyhal::MessageLoop;
 use syscall::os_sched_exit;
 use time::Duration;
@@ -38,9 +37,8 @@ impl AppState {
     }
 
     fn update_ui(&mut self, new_state: UiState) {
-        let this = self.pic();
-        this.ui_updated = true;
-        this.ui_state = new_state;
+        self.ui_updated = true;
+        self.ui_state = new_state;
     }
 }
 
@@ -48,13 +46,11 @@ impl ui::Delegate for AppState {
     type Action = ui::BasicAction;
 
     fn should_redraw(&self) -> bool {
-        let this = self.pic();
-        this.ui_updated
+        self.ui_updated
     }
 
     fn prepare_ui(&mut self, ctrl: &mut ui::Controller<Self::Action>) {
-        let this = self.pic();
-        this.ui_updated = false;
+        self.ui_updated = false;
 
         ctrl.set_button_actions(ui::ButtonAction::Map{
             left: None,

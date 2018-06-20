@@ -1,4 +1,3 @@
-use pic::Pic;
 use error::SystemError;
 use syscall::io_seproxyhal_spi_send;
 
@@ -100,28 +99,11 @@ macro_rules! impl_packet {
     ($self:ident, $packet_tag:expr, {
         $($writes:tt)*
     }) => {
-        fn bytes_size(&self) -> u16 {
-            // Sometimes when the struct is static, Rust stores it in
-            // the memory region that is affected by the Ledger memory
-            // model. So we need to fixup the self reference before
-            // usage, to be sure we don't accidentally crash.
-            #[allow(unused_variables)]
-            let $self = {
-                use pic::Pic;
-                self.pic()
-            };
-
+        fn bytes_size(&$self) -> u16 {
             3 + impl_packet!(__bytes_size, $($writes)*)
         }
 
-        fn to_bytes(&self, buf: &mut [u8], offset: usize) -> usize {
-            // See above in bytes_size for the reasoning behind PIC
-            #[allow(unused_variables)]
-            let $self = {
-                use pic::Pic;
-                self.pic()
-            };
-
+        fn to_bytes(&$self, buf: &mut [u8], offset: usize) -> usize {
             let mut written = 0;
 
             impl_packet!(__to_bytes, offset, buf, written, 0,
@@ -161,11 +143,10 @@ impl Iterator for FourByteIterator {
     type Item = u8;
 
     fn next(&mut self) -> Option<u8> {
-        let this = self.pic();
-        let n = this.n;
-        if n < this.data.len() {
-            this.n += 1;
-            Some(this.data[n])
+        let n = self.n;
+        if n < self.data.len() {
+            self.n += 1;
+            Some(self.data[n])
         } else {
             None
         }

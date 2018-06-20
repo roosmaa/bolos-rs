@@ -12,7 +12,7 @@ pub struct GeneralStatus {
 }
 
 impl Packet for GeneralStatus {
-    impl_packet!(this, StatusTag::General, {
+    impl_packet!(self, StatusTag::General, {
         [S] 2 => [0; 2],
     });
 }
@@ -94,19 +94,19 @@ pub struct ScreenDisplayShapeStatus {
 }
 
 impl Packet for ScreenDisplayShapeStatus {
-    impl_packet!(this, StatusTag::ScreenDisplay, {
+    impl_packet!(self, StatusTag::ScreenDisplay, {
         [S] SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
-            this.type_id,
-            this.user_id,
-            this.x,
-            this.y,
-            this.width,
-            this.height,
-            this.stroke,
-            this.radius,
-            this.fill,
-            this.foreground_color,
-            this.background_color,
+            self.type_id,
+            self.user_id,
+            self.x,
+            self.y,
+            self.width,
+            self.height,
+            self.stroke,
+            self.radius,
+            self.fill,
+            self.foreground_color,
+            self.background_color,
             0,
             0,
         ),
@@ -142,23 +142,23 @@ pub struct ScreenDisplayTextStatus<'a> {
 }
 
 impl<'a> Packet for ScreenDisplayTextStatus<'a> {
-    impl_packet!(this, StatusTag::ScreenDisplay, {
+    impl_packet!(self, StatusTag::ScreenDisplay, {
         [S] SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
-            this.type_id,
-            this.user_id,
-            this.x,
-            this.y,
-            this.width,
-            this.height,
-            this.scroll_delay,
+            self.type_id,
+            self.user_id,
+            self.x,
+            self.y,
+            self.width,
+            self.height,
+            self.scroll_delay,
             0,
-            this.fill,
-            this.foreground_color,
-            this.background_color,
-            this.font_id,
-            this.scroll_speed,
+            self.fill,
+            self.foreground_color,
+            self.background_color,
+            self.font_id,
+            self.scroll_speed,
         ),
-        [S] this.text.pic().len() => this.text.pic().as_bytes(),
+        [S] self.text.pic().len() => self.text.pic().as_bytes(),
     });
 }
 
@@ -184,21 +184,21 @@ pub struct ScreenDisplaySystemIconStatus {
 }
 
 impl Packet for ScreenDisplaySystemIconStatus {
-    impl_packet!(this, StatusTag::ScreenDisplay, {
+    impl_packet!(self, StatusTag::ScreenDisplay, {
         [S] SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
             ScreenDisplayStatusTypeId::Icon,
-            this.user_id,
-            this.x,
-            this.y,
-            this.width,
-            this.height,
+            self.user_id,
+            self.x,
+            self.y,
+            self.width,
+            self.height,
             0,
             0,
             0,
             0,
             0,
             0,
-            this.icon_id,
+            self.icon_id,
         ),
     });
 }
@@ -227,14 +227,14 @@ pub struct ScreenDisplayCustomIconStatus<'a> {
 }
 
 impl<'a> Packet for ScreenDisplayCustomIconStatus<'a> {
-    impl_packet!(this, StatusTag::ScreenDisplay, {
+    impl_packet!(self, StatusTag::ScreenDisplay, {
         [S] SCREEN_DISPLAY_HEADER_SIZE => make_screen_display_header(
             ScreenDisplayStatusTypeId::Icon,
-            this.user_id,
-            this.x,
-            this.y,
-            this.width,
-            this.height,
+            self.user_id,
+            self.x,
+            self.y,
+            self.width,
+            self.height,
             0,
             0,
             0,
@@ -243,15 +243,15 @@ impl<'a> Packet for ScreenDisplayCustomIconStatus<'a> {
             0,
             0,
         ),
-        [S] 1 => [this.bits_per_pixel],
-        [I] 4 * this.colors.len() => {
-            this.colors.pic().iter().flat_map(|n| {
+        [S] 1 => [self.bits_per_pixel],
+        [I] 4 * self.colors.len() => {
+            self.colors.pic().iter().flat_map(|n| {
                 let mut tmp = [0; 4];
                 LittleEndian::write_u32(&mut tmp, *n);
                 FourByteIterator::new(tmp)
             })
         },
-        [S] this.bitmap.len() => this.bitmap.pic(),
+        [S] self.bitmap.len() => self.bitmap.pic(),
     });
 }
 
@@ -276,8 +276,7 @@ pub enum ScreenDisplayStatus<'a> {
 
 impl<'a> Packet for ScreenDisplayStatus<'a> {
     fn bytes_size(&self) -> u16 {
-        let this = self.pic();
-        match this {
+        match self {
             &ScreenDisplayStatus::Shape(ref s) => s.bytes_size(),
             &ScreenDisplayStatus::Text(ref s) => s.bytes_size(),
             &ScreenDisplayStatus::SystemIcon(ref s) => s.bytes_size(),
@@ -286,8 +285,7 @@ impl<'a> Packet for ScreenDisplayStatus<'a> {
     }
 
     fn to_bytes(&self, buf: &mut [u8], offset: usize) -> usize {
-        let this = self.pic();
-        match this {
+        match self {
             &ScreenDisplayStatus::Shape(ref s) => s.to_bytes(buf, offset),
             &ScreenDisplayStatus::Text(ref s) => s.to_bytes(buf, offset),
             &ScreenDisplayStatus::SystemIcon(ref s) => s.to_bytes(buf, offset),
@@ -309,16 +307,14 @@ pub enum Status<'a> {
 
 impl<'a> Packet for Status<'a> {
     fn bytes_size(&self) -> u16 {
-        let this = self.pic();
-        match this {
+        match self {
             &Status::General(ref s) => s.bytes_size(),
             &Status::ScreenDisplay(ref s) => s.bytes_size(),
         }
     }
 
     fn to_bytes(&self, buf: &mut [u8], offset: usize) -> usize {
-        let this = self.pic();
-        match this {
+        match self {
             &Status::General(ref s) => s.to_bytes(buf, offset),
             &Status::ScreenDisplay(ref s) => s.to_bytes(buf, offset),
         }
