@@ -72,11 +72,6 @@ LDLIBS   += -lm -lgcc -lc -z muldefs rusty-rs/target/thumbv6m-none-eabi/release/
 # import rules to compile glyphs(/pone)
 include $(BOLOS_SDK)/Makefile.glyphs
 
-### variables processed by the common makefile.rules of the SDK to grab source files and include dirs
-APP_SOURCE_PATH  += src
-SDK_SOURCE_PATH  += lib_stusb
-SDK_SOURCE_PATH  += lib_stusb_impl
-
 load: all
 	python -m ledgerblue.loadApp $(CUSTOM_CA_PARAM) $(APP_LOAD_PARAMS)
 
@@ -84,7 +79,15 @@ delete:
 	python -m ledgerblue.deleteApp $(CUSTOM_CA_PARAM) $(COMMON_DELETE_PARAMS)
 
 # import generic rules from the sdk
-include $(BOLOS_SDK)/Makefile.rules
+SOURCE_PATH   := src
+SOURCE_FILES  := $(SOURCE_PATH)/main.c
+INCLUDES_PATH :=
+
+VPATH := $(dir $(SOURCE_FILES))
+OBJECT_FILES := $(sort $(addprefix obj/, $(addsuffix .o, $(basename $(notdir $(SOURCE_FILES))))))
+DEPEND_FILES := $(sort $(addprefix dep/, $(addsuffix .d, $(basename $(notdir $(SOURCE_FILES))))))
+
+include $(BOLOS_SDK)/Makefile.rules_generic
 
 #add dependency on custom makefile filename
 dep/%.d: %.c Makefile
