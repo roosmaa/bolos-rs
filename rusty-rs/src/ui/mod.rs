@@ -117,8 +117,7 @@ impl<A, D> Middleware<A, D>
         this.auto_action = None;
     }
 
-    fn send_next_view(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel>
-    {
+    fn send_next_view(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel> {
         let this = self.pic();
 
         // Coordinate our rendering with the system UI
@@ -136,8 +135,6 @@ impl<A, D> Middleware<A, D>
         let mut ctrl = Controller::new(this.current_view_index);
         delegate.prepare_ui(&mut ctrl);
         if let Some(ref view) = ctrl.target_view {
-            this.button_actions = ctrl.button_actions;
-
             let scroll_time = if let View::LabelLine(ref v) = view {
                 v.estimate_scroll_time()
             } else {
@@ -153,6 +150,8 @@ impl<A, D> Middleware<A, D>
 
             None
         } else {
+            this.button_actions = ctrl.button_actions;
+
             if let AutoAction::Countdown{
                 min_wait_time,
                 max_wait_time,
