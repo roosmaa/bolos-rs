@@ -5,7 +5,7 @@
 extern crate bolos;
 
 use bolos::seproxyhal::MessageLoop;
-use bolos::exit;
+use bolos::runtime::exit;
 use bolos::ui;
 
 struct AppState ();
