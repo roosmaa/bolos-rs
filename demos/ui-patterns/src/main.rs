@@ -7,6 +7,7 @@ extern crate bolos;
 use bolos::seproxyhal::MessageLoop;
 use bolos::runtime::exit;
 use bolos::ui;
+use bolos::state::{Store, BasicAction};
 
 enum UiState {
     MainManu{
@@ -47,18 +48,44 @@ impl AppState {
     }
 }
 
-impl ui::Delegate for AppState {
-    type Action = ui::BasicAction;
+impl Store for AppState {
+    type Action = BasicAction;
 
+    fn process_action(&mut self, action: Self::Action) {
+        match self.ui_state {
+            UiState::MainManu{ active_item } => {
+                match action {
+                    BasicAction::Previous => {
+                        if active_item > 0 {
+                            self.update_ui(UiState::MainManu{
+                                active_item: active_item - 1,
+                            });
+                        }
+                    },
+                    BasicAction::Next => {
+                        if active_item + 1 < self.main_menu_items.len() {
+                            self.update_ui(UiState::MainManu{
+                                active_item: active_item + 1,
+                            });
+                        }
+                    },
+                    BasicAction::Confirm => exit(0),
+                }
+            },
+        }
+    }
+}
+
+impl ui::Delegate for AppState {
     fn ui_version(&self) -> u16 {
         self.ui_version
     }
 
     fn prepare_ui(&self, ctrl: &mut ui::Controller<Self::Action>) {
         ctrl.set_button_actions(ui::ButtonAction::Map{
-            left: Some(ui::BasicAction::Previous),
-            right: Some(ui::BasicAction::Next),
-            both: Some(ui::BasicAction::Confirm),
+            left: Some(BasicAction::Previous),
+            right: Some(BasicAction::Next),
+            both: Some(BasicAction::Confirm),
         });
 
         // We always clear the screen of old content
@@ -133,32 +160,8 @@ impl ui::Delegate for AppState {
         //     max_wait_time: Some(Duration::from_secs(10)),
         //     wait_time: Duration::from_millis(1000),
         //     wait_for_scroll: true,
-        //     action: ui::BasicAction::Next,
+        //     action: BasicAction::Next,
         // });
-    }
-
-    fn process_action(&mut self, action: Self::Action) {
-        match self.ui_state {
-            UiState::MainManu{ active_item } => {
-                match action {
-                    ui::BasicAction::Previous => {
-                        if active_item > 0 {
-                            self.update_ui(UiState::MainManu{
-                                active_item: active_item - 1,
-                            });
-                        }
-                    },
-                    ui::BasicAction::Next => {
-                        if active_item + 1 < self.main_menu_items.len() {
-                            self.update_ui(UiState::MainManu{
-                                active_item: active_item + 1,
-                            });
-                        }
-                    },
-                    ui::BasicAction::Confirm => exit(0),
-                }
-            },
-        }
     }
 }
 

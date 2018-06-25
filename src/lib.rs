@@ -12,3 +12,4 @@ pub mod time;
 pub mod seproxyhal;
 pub mod ui;
 pub mod pic;
+pub mod state;

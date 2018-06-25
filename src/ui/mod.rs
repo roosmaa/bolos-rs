@@ -11,6 +11,7 @@ use seproxyhal::status::{
     ScreenDisplayStatus, ScreenDisplayStatusTypeId, ScreenDisplayShapeStatus,
     ScreenDisplayTextStatus, ScreenDisplaySystemIconStatus, ScreenDisplayCustomIconStatus,
 };
+use state::Store;
 
 struct ButtonActionMap<A> {
     left: Option<A>,
@@ -293,19 +294,9 @@ impl<'a, A> Controller<'a, A>
     }
 }
 
-#[derive(Copy, Clone)]
-pub enum BasicAction {
-    Previous,
-    Next,
-    Confirm,
-}
-
-pub trait Delegate {
-    type Action: Copy;
-
+pub trait Delegate: Store {
     fn ui_version(&self) -> u16;
     fn prepare_ui(&self, ctrl: &mut Controller<Self::Action>);
-    fn process_action(&mut self, _action: Self::Action) {}
 }
 
 pub enum FillMode {
