@@ -1,0 +1,11 @@
+[package]
+name = "ui-patterns"
+version = "0.1.0"
+authors = ["Mart Roosmaa <mart@roosmaa.net>"]
+
+[profile.release]
+lto = true
+opt-level = "s"
+
+[dependencies]
+bolos = { path = "../../" }

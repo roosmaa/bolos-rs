@@ -1,0 +1,9 @@
+[build]
+target="thumbv6m-none-eabi"
+rustflags = [
+    "-C", "target-feature=+reserve-r9",
+    "-C", "relocation-model=ropi",
+    "-C", "link-arg=-nostartfiles",
+    "-C", "link-arg=-Tlink.ld",
+    "-Z", "thinlto=no",
+]
