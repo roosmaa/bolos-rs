@@ -340,6 +340,7 @@ impl Color {
     }
 }
 
+#[derive(Default)]
 pub struct Frame {
     pub x: i16,
     pub y: i16,
@@ -347,9 +348,38 @@ pub struct Frame {
     pub height: u16,
 }
 
-impl Default for Frame {
-    fn default() -> Self {
-        Self{ x: 0, y: 0, width: 0, height: 0 }
+impl Frame {
+    fn new(position: Position, size: Size) -> Self {
+        Self{
+            x: position.x,
+            y: position.y,
+            width: size.width,
+            height: size.height,
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct Position {
+    pub x: i16,
+    pub y: i16,
+}
+
+impl Position {
+    fn new(x: i16, y: i16) -> Self {
+        Self{ x, y }
+    }
+}
+
+#[derive(Default)]
+pub struct Size {
+    pub width: u16,
+    pub height: u16,
+}
+
+impl Size {
+    fn new(width: u16, height: u16) -> Self {
+        Self{ width, height }
     }
 }
 
@@ -402,13 +432,35 @@ impl<'a> Into<View<'a>> for RectangleView {
 pub enum SystemIcon {
     Check,
     Cross,
+    Left,
+    Right,
+    Up,
+    Down,
+    DashboardBadge,
 }
 
 impl SystemIcon {
+    pub fn dimensions(&self) -> Size {
+        match self {
+            &SystemIcon::Check => Size::new(8, 6),
+            &SystemIcon::Cross => Size::new(7, 7),
+            &SystemIcon::Left => Size::new(4, 7),
+            &SystemIcon::Right => Size::new(4, 7),
+            &SystemIcon::Up => Size::new(7, 4),
+            &SystemIcon::Down => Size::new(7, 4),
+            &SystemIcon::DashboardBadge => Size::new(14, 14),
+        }
+    }
+
     fn to_wire_format(&self) -> u8 {
         match self {
             &SystemIcon::Check => 6,
             &SystemIcon::Cross => 7,
+            &SystemIcon::Left => 9,
+            &SystemIcon::Right => 10,
+            &SystemIcon::Up => 11,
+            &SystemIcon::Down => 12,
+            &SystemIcon::DashboardBadge => 15,
         }
     }
 }
@@ -420,9 +472,17 @@ impl<'a> Into<Icon<'a>> for SystemIcon {
 }
 
 pub struct CustomIcon<'a> {
+    pub width: u16,
+    pub height: u16,
     pub bits_per_pixel: u8,
     pub colors: &'a [u32],
     pub bitmap: &'a [u8],
+}
+
+impl<'a> CustomIcon<'a> {
+    pub fn dimensions(&self) -> Size {
+        Size::new(self.width, self.height)
+    }
 }
 
 impl<'a> Into<Icon<'a>> for CustomIcon<'a> {
@@ -436,21 +496,32 @@ pub enum Icon<'a> {
     Custom(CustomIcon<'a>),
 }
 
+impl<'a> Icon<'a> {
+    pub fn dimensions(&self) -> Size {
+        match self {
+            &Icon::System(ref ico) => ico.dimensions(),
+            &Icon::Custom(ref ico) => ico.dimensions(),
+        }
+    }
+}
+
 pub struct IconView<'a> {
-    pub frame: Frame,
+    pub position: Position,
     pub icon: Icon<'a>,
 }
 
 impl<'a> IconView<'a> {
     fn to_display_status(&self, user_id: u8) -> ScreenDisplayStatus {
+        let size = self.icon.dimensions();
+
         match self.icon {
             Icon::Custom(ref icon) => {
                 ScreenDisplayCustomIconStatus{
                     user_id,
-                    x: self.frame.x,
-                    y: self.frame.y,
-                    width: self.frame.width,
-                    height: self.frame.height,
+                    x: self.position.x,
+                    y: self.position.y,
+                    width: size.width,
+                    height: size.height,
                     bits_per_pixel: icon.bits_per_pixel,
                     colors: icon.colors,
                     bitmap: icon.bitmap,
@@ -459,10 +530,10 @@ impl<'a> IconView<'a> {
             Icon::System(ref icon) => {
                 ScreenDisplaySystemIconStatus{
                     user_id,
-                    x: self.frame.x,
-                    y: self.frame.y,
-                    width: self.frame.width,
-                    height: self.frame.height,
+                    x: self.position.x,
+                    y: self.position.y,
+                    width: size.width,
+                    height: size.height,
                     icon_id: icon.to_wire_format(),
                 }.into()
             },
@@ -473,8 +544,10 @@ impl<'a> IconView<'a> {
 impl<'a> Default for IconView<'a> {
     fn default() -> Self {
         Self{
-            frame: Default::default(),
+            position: Default::default(),
             icon: CustomIcon{
+                width: 0,
+                height: 0,
                 bits_per_pixel: 0,
                 colors: &[],
                 bitmap: &[],

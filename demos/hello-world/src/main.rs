@@ -7,28 +7,12 @@ extern crate bolos;
 use bolos::seproxyhal::MessageLoop;
 use bolos::exit;
 use bolos::ui;
-use bolos::time::Duration;
 
-enum UiState {
-    Welcome,
-}
-
-struct AppState {
-    ui_state: UiState,
-    ui_version: u16,
-}
+struct AppState ();
 
 impl AppState {
-    fn new() -> Self {
-        Self{
-            ui_state: UiState::Welcome,
-            ui_version: 0,
-        }
-    }
-
-    fn update_ui(&mut self, new_state: UiState) {
-        self.ui_version += 1;
-        self.ui_state = new_state;
+    fn new() -> AppState {
+        AppState()
     }
 }
 
@@ -36,7 +20,7 @@ impl ui::Delegate for AppState {
     type Action = ui::BasicAction;
 
     fn ui_version(&self) -> u16 {
-        self.ui_version
+        0
     }
 
     fn prepare_ui(&self, ctrl: &mut ui::Controller<Self::Action>) {
@@ -45,13 +29,6 @@ impl ui::Delegate for AppState {
             right: Some(ui::BasicAction::Previous),
             both: None,
         });
-        ctrl.set_auto_action(ui::AutoAction::Countdown{
-            min_wait_time: Some(Duration::from_millis(3000)),
-            max_wait_time: Some(Duration::from_secs(10)),
-            wait_time: Duration::from_millis(1000),
-            wait_for_scroll: true,
-            action: ui::BasicAction::Next,
-        });
 
         ctrl.add_view(|| ui::RectangleView{
             frame: ui::Frame{ x: 0, y: 0, width: 128, height: 32 },
@@ -59,12 +36,12 @@ impl ui::Delegate for AppState {
             ..Default::default()
         }.into());
         ctrl.add_view(|| ui::IconView{
-            frame: ui::Frame{ x: 3, y: 12, width: 7, height: 7 },
+            position: ui::Position{ x: 3, y: 12 },
             icon: ui::SystemIcon::Cross.into(),
             ..Default::default()
         }.into());
         ctrl.add_view(|| ui::IconView{
-            frame: ui::Frame{ x: 117, y: 13, width: 8, height: 6 },
+            position: ui::Position{ x: 117, y: 13 },
             icon: ui::SystemIcon::Check.into(),
             ..Default::default()
         }.into());
@@ -98,7 +75,6 @@ impl ui::Delegate for AppState {
 
 fn main() {
     let mut state = AppState::new();
-
     let mut ui = ui::Middleware::new();
 
     MessageLoop::new().for_each(|ch| {
