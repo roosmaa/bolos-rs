@@ -7,8 +7,5 @@ authors = ["Mart Roosmaa <mart@roosmaa.net>"]
 lto = true
 opt-level = "s"
 
-[lib]
-crate-type = ["staticlib"]
-
 [dependencies]
 byteorder = { version = "1", default-features = false }

@@ -71,7 +71,8 @@ struct try_context {
 }
 
 extern {
-    fn setjmp(env: *mut u32) -> u16;
+    #[link_name = "llvm.eh.sjlj.setjmp"]
+    fn setjmp(jmp_buf: *mut u8) -> i32;
 }
 
 #[inline(always)]
@@ -85,7 +86,8 @@ fn supervisor_call(syscall_id: (u32, u32), params: &[u32]) -> Result<u32, System
         exception: 0,
     };
     unsafe {
-        ctx.exception = setjmp(ctx.jmp_buf.as_mut_ptr());
+        let jmp_buf_ptr = ctx.jmp_buf.as_mut_ptr() as *mut u8;
+        ctx.exception = setjmp(jmp_buf_ptr) as u16;
         if ctx.exception == 0 {
             // Make the exception handler available
             asm!("mov r9, $0" :

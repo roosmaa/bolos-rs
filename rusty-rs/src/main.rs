@@ -1,6 +1,8 @@
 #![no_std]
+#![no_main]
 #![feature(asm)]
 #![feature(panic_implementation)]
+#![feature(link_llvm_intrinsics)]
 #![allow(dead_code)]
 
 #![feature(const_slice_as_ptr)]
@@ -106,7 +108,7 @@ impl ui::Delegate for AppState {
     }
 }
 
-fn app_main() {
+fn main() {
     let mut state = AppState::new();
 
     let mut ui = ui::Middleware::new();
@@ -121,7 +123,7 @@ fn app_main() {
 
 #[no_mangle]
 #[link_section=".boot"]
-pub fn main() {
+pub fn bolos_main() -> ! {
     // App context setup
     unsafe {
         // Enable interrupts
@@ -133,5 +135,9 @@ pub fn main() {
             : "volatile");
     }
 
-    app_main();
+    main();
+
+    loop {
+        os_sched_exit(1).is_ok();
+    };
 }
