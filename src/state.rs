@@ -11,5 +11,3 @@ pub enum BasicAction {
     Next,
     Confirm,
 }
-
-// TODO: Implement MenuAction trait for BasicAction

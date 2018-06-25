@@ -1,4 +1,5 @@
 mod bolos;
+pub mod menu;
 
 use core::cmp::{min, max};
 use core::marker::PhantomData;
@@ -585,6 +586,7 @@ impl ScrollMode {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum TextHorizontalAlignment {
     Left,
     Center,
@@ -601,6 +603,7 @@ impl TextHorizontalAlignment {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum TextVerticalAlignment {
     Top,
     Middle,
@@ -617,6 +620,7 @@ impl TextVerticalAlignment {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum TextFont {
     OpenSansLight16px,
     OpenSansRegular11px,

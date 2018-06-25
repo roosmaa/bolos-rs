@@ -7,22 +7,16 @@ extern crate bolos;
 use bolos::seproxyhal::MessageLoop;
 use bolos::runtime::exit;
 use bolos::ui;
+use bolos::ui::menu;
 use bolos::state::{Store, BasicAction};
 
 enum UiState {
-    MainManu{
-        active_item: usize,
-    },
-    // SettingsMenu{
-    //     active_item: usize,
-    // },
-    // AboutMenu{
-    //     active_item: usize,
-    // },
+    MainMenu(MainMenuItem),
+    // SettingsMenu(SettingsMenuItem),
+    // AboutMenu(AboutMenuItem),
 }
 
 struct AppState {
-    main_menu_items: [&'static str; 5],
     ui_state: UiState,
     ui_version: u16,
 }
@@ -30,14 +24,7 @@ struct AppState {
 impl AppState {
     fn new() -> Self {
         Self{
-            main_menu_items: [
-                "Item 1",
-                "Item 2",
-                "Item 3",
-                "Item 4",
-                "Quit app",
-            ],
-            ui_state: UiState::MainManu{ active_item: 0 },
+            ui_state: UiState::MainMenu(MainMenuItem::Line1),
             ui_version: 0,
         }
     }
@@ -53,23 +40,22 @@ impl Store for AppState {
 
     fn process_action(&mut self, action: Self::Action) {
         match self.ui_state {
-            UiState::MainManu{ active_item } => {
+            UiState::MainMenu(current_item) => {
                 match action {
                     BasicAction::Previous => {
-                        if active_item > 0 {
-                            self.update_ui(UiState::MainManu{
-                                active_item: active_item - 1,
-                            });
-                        }
+                        let new_item = menu::previous_item(current_item, self)
+                            .unwrap_or(MainMenuItem::Line1);
+                        self.update_ui(UiState::MainMenu(new_item));
                     },
                     BasicAction::Next => {
-                        if active_item + 1 < self.main_menu_items.len() {
-                            self.update_ui(UiState::MainManu{
-                                active_item: active_item + 1,
-                            });
-                        }
+                        let new_item = menu::next_item(current_item, self)
+                            .unwrap_or(MainMenuItem::Quit);
+                        self.update_ui(UiState::MainMenu(new_item));
                     },
-                    BasicAction::Confirm => exit(0),
+                    BasicAction::Confirm => match current_item {
+                        MainMenuItem::Quit => exit(0),
+                        _ => self.update_ui(UiState::MainMenu(MainMenuItem::Quit)),
+                    },
                 }
             },
         }
@@ -96,63 +82,7 @@ impl ui::Delegate for AppState {
         }.into());
 
         match self.ui_state {
-            UiState::MainManu{ active_item } => {
-                if active_item > 0 {
-                    ctrl.add_view(|| ui::IconView{
-                        position: ui::Position{ x: 3, y: 14 },
-                        icon: ui::SystemIcon::Up.into(),
-                        ..Default::default()
-                    }.into());
-                }
-                if active_item + 1 < self.main_menu_items.len() {
-                    ctrl.add_view(|| ui::IconView{
-                        position: ui::Position{ x: 118, y: 14 },
-                        icon: ui::SystemIcon::Down.into(),
-                        ..Default::default()
-                    }.into());
-                }
-                if active_item > 0 {
-                    ctrl.add_view(|| ui::LabelLineView{
-                        frame: ui::Frame{ x: 14, y: 3, width: 100, height: 12 },
-                        font: ui::TextFont::OpenSansRegular11px,
-                        horizontal_alignment: ui::TextHorizontalAlignment::Center,
-                        text: self.main_menu_items[active_item-1],
-                        ..Default::default()
-                    }.into());
-                }
-                if active_item + 1 < self.main_menu_items.len() {
-                    ctrl.add_view(|| ui::LabelLineView{
-                        frame: ui::Frame{ x: 14, y: 35, width: 100, height: 12 },
-                        font: ui::TextFont::OpenSansRegular11px,
-                        horizontal_alignment: ui::TextHorizontalAlignment::Center,
-                        text: self.main_menu_items[active_item+1],
-                        ..Default::default()
-                    }.into());
-                }
-                if active_item < self.main_menu_items.len() {
-                    if active_item == 4 {
-                        ctrl.add_view(|| ui::IconView{
-                            position: ui::Position{ x: 29, y: 9 },
-                            icon: ui::SystemIcon::DashboardBadge.into(),
-                            ..Default::default()
-                        }.into());
-                        ctrl.add_view(|| ui::LabelLineView{
-                            frame: ui::Frame{ x: 50, y: 19, width: 100, height: 12 },
-                            font: ui::TextFont::OpenSansExtraBold11px,
-                            text: self.main_menu_items[active_item],
-                            ..Default::default()
-                        }.into());
-                    } else {
-                        ctrl.add_view(|| ui::LabelLineView{
-                            frame: ui::Frame{ x: 14, y: 19, width: 100, height: 12 },
-                            font: ui::TextFont::OpenSansExtraBold11px,
-                            horizontal_alignment: ui::TextHorizontalAlignment::Center,
-                            text: self.main_menu_items[active_item],
-                            ..Default::default()
-                        }.into());
-                    }
-                }
-            },
+            UiState::MainMenu(item) => menu::prepare_menu(item, self, ctrl),
         }
 
         // ctrl.set_auto_action(ui::AutoAction::Countdown{
@@ -162,6 +92,50 @@ impl ui::Delegate for AppState {
         //     wait_for_scroll: true,
         //     action: BasicAction::Next,
         // });
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum MainMenuItem {
+    Line1,
+    Line2,
+    Line3,
+    Line4,
+    Quit,
+}
+
+impl menu::Delegate<MainMenuItem> for AppState {
+    fn prepare_menu_item(&self, ctrl: &mut menu::Controller<MainMenuItem, Self::Action>) {
+        ctrl.add_item(MainMenuItem::Line1, || menu::ItemSpec{
+            icon: None,
+            line_1: "Line 1",
+            line_2: "",
+            action: Some(BasicAction::Confirm),
+        });
+        ctrl.add_item(MainMenuItem::Line2, || menu::ItemSpec{
+            icon: None,
+            line_1: "Line 2",
+            line_2: "",
+            action: Some(BasicAction::Confirm),
+        });
+        ctrl.add_item(MainMenuItem::Line3, || menu::ItemSpec{
+            icon: Some(ui::SystemIcon::Check.into()),
+            line_1: "Line 3.1",
+            line_2: "Line 3.2",
+            action: Some(BasicAction::Confirm),
+        });
+        ctrl.add_item(MainMenuItem::Line4, || menu::ItemSpec{
+            icon: None,
+            line_1: "Line 4",
+            line_2: "",
+            action: Some(BasicAction::Confirm),
+        });
+        ctrl.add_item(MainMenuItem::Quit, || menu::ItemSpec{
+            icon: Some(ui::SystemIcon::DashboardBadge.into()),
+            line_1: "Quit",
+            line_2: "",
+            action: Some(BasicAction::Confirm),
+        });
     }
 }
 
