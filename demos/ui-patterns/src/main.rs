@@ -68,19 +68,6 @@ impl ui::Delegate for AppState {
     }
 
     fn prepare_ui(&self, ctrl: &mut ui::Controller<Self::Action>) {
-        ctrl.set_button_actions(ui::ButtonAction::Map{
-            left: Some(BasicAction::Previous),
-            right: Some(BasicAction::Next),
-            both: Some(BasicAction::Confirm),
-        });
-
-        // We always clear the screen of old content
-        ctrl.add_view(|| ui::RectangleView{
-            frame: ui::Frame{ x: 0, y: 0, width: 128, height: 32 },
-            fill: ui::FillMode::Fill,
-            ..Default::default()
-        }.into());
-
         match self.ui_state {
             UiState::MainMenu(item) => menu::prepare_menu(item, self, ctrl),
         }
