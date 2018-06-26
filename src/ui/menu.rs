@@ -21,29 +21,29 @@ pub trait Delegate<I>: Store {
     fn prepare_menu_item(&self, ctrl: &mut Controller<I, Self::Action>);
 }
 
-pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ctrl: &mut ui::Controller<A>)
+pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ui_ctrl: &mut ui::Controller<A>)
     where M: Copy,
           A: MenuAction + Copy,
           D: Delegate<M> + Store<Action=A>,
 {
-    let mut c = Controller::new(menu_item, true);
-    delegate.prepare_menu_item(&mut c);
+    let mut ctrl = Controller::new(menu_item, true);
+    delegate.prepare_menu_item(&mut ctrl);
 
-    ctrl.add_view(|| ui::RectangleView{
+    ui_ctrl.add_view(|| ui::RectangleView{
         frame: ui::Frame{ x: 0, y: 0, width: 128, height: 32 },
         fill: ui::FillMode::Fill,
         ..Default::default()
     }.into());
 
-    if c.previous_spec.is_some() {
-        ctrl.add_view(|| ui::IconView{
+    if ctrl.previous_spec.is_some() {
+        ui_ctrl.add_view(|| ui::IconView{
             position: ui::Position{ x: 3, y: 14 },
             icon: ui::SystemIcon::Up.into(),
             ..Default::default()
         }.into());
     }
-    if c.next_spec.is_some() {
-        ctrl.add_view(|| ui::IconView{
+    if ctrl.next_spec.is_some() {
+        ui_ctrl.add_view(|| ui::IconView{
             position: ui::Position{ x: 118, y: 14 },
             icon: ui::SystemIcon::Down.into(),
             ..Default::default()
@@ -56,16 +56,16 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ctrl: &mut ui::Controll
         line_2,
         line_2_font,
         action,
-    }) = c.current_spec {
+    }) = ctrl.current_spec {
         let is_multiline = line_2.len() > 0;
 
-        ctrl.set_button_actions(ui::ButtonAction::Map{
-            left: if c.previous_spec.is_some() {
+        ui_ctrl.set_button_actions(ui::ButtonAction::Map{
+            left: if ctrl.previous_spec.is_some() {
                 Some(A::action_for_previous_menu_item())
             } else {
                 None
             },
-            right: if c.next_spec.is_some() {
+            right: if ctrl.next_spec.is_some() {
                 Some(A::action_for_next_menu_item())
             } else {
                 None
@@ -74,8 +74,8 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ctrl: &mut ui::Controll
         });
 
         if !is_multiline {
-            if let Some(prev_spec) = c.previous_spec {
-                ctrl.add_view(|| ui::LabelLineView{
+            if let Some(prev_spec) = ctrl.previous_spec {
+                ui_ctrl.add_view(|| ui::LabelLineView{
                     frame: ui::Frame{ x: 14, y: 3, width: 100, height: 12 },
                     font: ui::TextFont::OpenSansRegular11px,
                     horizontal_alignment: ui::TextHorizontalAlignment::Center,
@@ -87,8 +87,8 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ctrl: &mut ui::Controll
                     ..Default::default()
                 }.into());
             }
-            if let Some(next_spec) = c.next_spec {
-                ctrl.add_view(|| ui::LabelLineView{
+            if let Some(next_spec) = ctrl.next_spec {
+                ui_ctrl.add_view(|| ui::LabelLineView{
                     frame: ui::Frame{ x: 14, y: 35, width: 100, height: 12 },
                     font: ui::TextFont::OpenSansRegular11px,
                     horizontal_alignment: ui::TextHorizontalAlignment::Center,
@@ -131,7 +131,7 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ctrl: &mut ui::Controll
 
         if let Some(icon) = icon {
             let size = icon.dimensions();
-            ctrl.add_view(move || ui::IconView{
+            ui_ctrl.add_view(move || ui::IconView{
                 position: ui::Position{
                     x: 14 + icon_offset_x as i16,
                     y: (32 - size.height as i16) / 2,
@@ -143,7 +143,7 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ctrl: &mut ui::Controll
 
         if line_2.len() == 0 {
             // 1-line layout
-            ctrl.add_view(move || ui::LabelLineView{
+            ui_ctrl.add_view(move || ui::LabelLineView{
                 frame: ui::Frame{
                     x: 14 + text_offset_x as i16, y: 19,
                     width: available_width - text_offset_x, height: 12,
@@ -155,7 +155,7 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ctrl: &mut ui::Controll
             }.into());
         } else {
             // 2-line layout
-            ctrl.add_view(move || ui::LabelLineView{
+            ui_ctrl.add_view(move || ui::LabelLineView{
                 frame: ui::Frame{
                     x: 14 + text_offset_x as i16, y: 12,
                     width: available_width - text_offset_x, height: 12,
@@ -165,7 +165,7 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ctrl: &mut ui::Controll
                 text: line_1,
                 ..Default::default()
             }.into());
-            ctrl.add_view(move || ui::LabelLineView{
+            ui_ctrl.add_view(move || ui::LabelLineView{
                 frame: ui::Frame{
                     x: 14 + text_offset_x as i16, y: 26,
                     width: available_width - text_offset_x, height: 12,
