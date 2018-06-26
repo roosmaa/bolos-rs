@@ -52,7 +52,9 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ctrl: &mut ui::Controll
     if let Some(ItemSpec{
         icon,
         line_1,
+        line_1_font,
         line_2,
+        line_2_font,
         action,
     }) = c.current_spec {
         let is_multiline = line_2.len() > 0;
@@ -102,9 +104,8 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ctrl: &mut ui::Controll
         } else {
             0
         };
-        let text_font = ui::TextFont::OpenSansExtraBold11px;
-        let line_1_width = text_font.width_for_text(line_1) as u16;
-        let line_2_width = text_font.width_for_text(line_2) as u16;
+        let line_1_width = line_1_font.width_for_text(line_1) as u16;
+        let line_2_width = line_2_font.width_for_text(line_2) as u16;
         let total_width = icon_width + max(line_1_width, line_2_width);
 
         let available_width = 100;
@@ -147,7 +148,7 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ctrl: &mut ui::Controll
                     x: 14 + text_offset_x as i16, y: 19,
                     width: available_width - text_offset_x, height: 12,
                 },
-                font: text_font,
+                font: line_1_font,
                 horizontal_alignment: text_alignment,
                 text: line_1,
                 ..Default::default()
@@ -159,7 +160,7 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ctrl: &mut ui::Controll
                     x: 14 + text_offset_x as i16, y: 12,
                     width: available_width - text_offset_x, height: 12,
                 },
-                font: text_font,
+                font: line_1_font,
                 horizontal_alignment: text_alignment,
                 text: line_1,
                 ..Default::default()
@@ -169,7 +170,7 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ctrl: &mut ui::Controll
                     x: 14 + text_offset_x as i16, y: 26,
                     width: available_width - text_offset_x, height: 12,
                 },
-                font: text_font,
+                font: line_2_font,
                 horizontal_alignment: text_alignment,
                 text: line_2,
                 ..Default::default()
@@ -199,8 +200,23 @@ pub fn next_item<M, D>(menu_item: M, delegate: &D) -> Option<M>
 pub struct ItemSpec<'a, A> {
     pub icon: Option<ui::Icon<'a>>,
     pub line_1: &'a str,
+    pub line_1_font: ui::TextFont,
     pub line_2: &'a str,
+    pub line_2_font: ui::TextFont,
     pub action: Option<A>,
+}
+
+impl<'a, A> Default for ItemSpec<'a, A> {
+    fn default() -> Self {
+        Self{
+            icon: None,
+            line_1: "",
+            line_1_font: ui::TextFont::OpenSansExtraBold11px,
+            line_2: "",
+            line_2_font: ui::TextFont::OpenSansExtraBold11px,
+            action: None,
+        }
+    }
 }
 
 enum ControllerState {

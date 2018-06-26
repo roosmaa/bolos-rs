@@ -107,34 +107,33 @@ enum MainMenuItem {
 impl menu::Delegate<MainMenuItem> for AppState {
     fn prepare_menu_item(&self, ctrl: &mut menu::Controller<MainMenuItem, Self::Action>) {
         ctrl.add_item(MainMenuItem::Line1, || menu::ItemSpec{
-            icon: None,
             line_1: "Line 1",
-            line_2: "",
             action: Some(BasicAction::Confirm),
+            ..Default::default()
         });
         ctrl.add_item(MainMenuItem::Line2, || menu::ItemSpec{
-            icon: None,
             line_1: "Line 2",
-            line_2: "",
             action: Some(BasicAction::Confirm),
+            ..Default::default()
         });
         ctrl.add_item(MainMenuItem::Line3, || menu::ItemSpec{
             icon: Some(ui::SystemIcon::Check.into()),
             line_1: "Line 3.1",
+            line_1_font: ui::TextFont::OpenSansRegular11px,
             line_2: "Line 3.2",
             action: Some(BasicAction::Confirm),
+            ..Default::default()
         });
         ctrl.add_item(MainMenuItem::Line4, || menu::ItemSpec{
-            icon: None,
             line_1: "Line 4",
-            line_2: "",
             action: Some(BasicAction::Confirm),
+            ..Default::default()
         });
         ctrl.add_item(MainMenuItem::Quit, || menu::ItemSpec{
             icon: Some(ui::SystemIcon::DashboardBadge.into()),
             line_1: "Quit",
-            line_2: "",
             action: Some(BasicAction::Confirm),
+            ..Default::default()
         });
     }
 }
