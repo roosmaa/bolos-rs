@@ -1,0 +1,9 @@
+[profile.release]
+lto = true
+opt-level = "s"
+
+[workspace]
+members = [
+    "hello-world/",
+    "ui-patterns/",
+]
