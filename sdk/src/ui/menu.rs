@@ -125,7 +125,7 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ui_ctrl: &mut ui::Contr
             // Left align the text labels to the icon and then
             // try to center them all
             text_alignment = ui::TextHorizontalAlignment::Left;
-            icon_offset_x = max(0, (available_width - total_width) / 2);
+            icon_offset_x = max(0, (available_width as i32 - total_width as i32) / 2) as u16;
             text_offset_x = icon_offset_x + icon_width;
         }
 
