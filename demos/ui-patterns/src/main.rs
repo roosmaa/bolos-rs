@@ -260,7 +260,7 @@ impl ui::Delegate for AppState {
                 ctrl.set_button_actions(ui::ButtonAction::Map{
                     left: Some(BasicAction::Previous),
                     right: Some(BasicAction::Confirm),
-                    both: None,
+                    both: Some(BasicAction::Next),
                 });
 
                 ctrl.add_view(|| ui::RectangleView{
