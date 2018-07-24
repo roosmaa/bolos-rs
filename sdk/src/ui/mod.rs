@@ -605,11 +605,17 @@ pub enum ScrollMode {
 }
 
 impl ScrollMode {
+    fn delay_as_decis(delay: Duration) -> u8 {
+        let decis = delay.as_millis() / 100;
+        // We only have 7 bits for the decisecond value, so cap the maximum at 0x7F
+        min(0x7F, decis) as u8
+    }
+
     fn to_wire_format(&self) -> (u8, u8) {
         match self {
             &ScrollMode::Disabled => (0, 0),
-            &ScrollMode::Once{ delay, speed } => ((delay.as_millis() / 100) as u8 | 0x80, speed),
-            &ScrollMode::Infinite{ delay, speed } => ((delay.as_millis() / 100) as u8, speed),
+            &ScrollMode::Once{ delay, speed } => (ScrollMode::delay_as_decis(delay) | 0x80, speed),
+            &ScrollMode::Infinite{ delay, speed } => (ScrollMode::delay_as_decis(delay), speed),
         }
     }
 }
