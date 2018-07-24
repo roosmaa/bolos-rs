@@ -281,13 +281,13 @@ impl ui::Delegate for AppState {
 
                 let line_1_base = ui::LabelLineView{
                     frame: ui::Frame{ x: 0, y: 12, width: 128, height: 12 },
-                    font: ui::TextFont::OpenSansExtraBold11px,
+                    font: ui::TextFont::OpenSansRegular11px,
                     horizontal_alignment: ui::TextHorizontalAlignment::Center,
                     ..Default::default()
                 };
                 let line_2_base = ui::LabelLineView{
                     frame: ui::Frame{ x: 23, y: 26, width: 82, height: 12 },
-                    font: ui::TextFont::OpenSansRegular11px,
+                    font: ui::TextFont::OpenSansExtraBold11px,
                     horizontal_alignment: ui::TextHorizontalAlignment::Center,
                     scroll: ui::ScrollMode::Once{ delay: Duration::from_secs(1), speed: 26 },
                     ..Default::default()
@@ -297,10 +297,10 @@ impl ui::Delegate for AppState {
                     DemoState::Notice => {
                         ctrl.add_view(|| ui::LabelLineView{
                             text: "Confirm",
+                            font: ui::TextFont::OpenSansExtraBold11px,
                             ..line_1_base
                         }.into());
                         ctrl.add_view(|| ui::LabelLineView{
-                            font: ui::TextFont::OpenSansExtraBold11px,
                             text: "details",
                             scroll: ui::ScrollMode::Disabled,
                             ..line_2_base
