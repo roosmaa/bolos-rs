@@ -1,4 +1,5 @@
 use core::cmp::max;
+use time::Duration;
 use state::{Store, BasicAction};
 use ui;
 
@@ -112,14 +113,17 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ui_ctrl: &mut ui::Contr
         let icon_offset_x;
         let text_offset_x;
         let text_alignment;
+        let line_2_scroll;
         if icon_width == 0 {
             // No icon layout, just use the centered labels. If the 2nd
             // line is too long, enable scrolling for it
             icon_offset_x = 0;
             text_alignment = ui::TextHorizontalAlignment::Center;
             text_offset_x = 0;
-            if line_2_width >= available_width {
-                // TODO: Enable scroll for label
+            line_2_scroll = if line_2_width >= available_width {
+                ui::ScrollMode::Infinite{delay: Duration::from_secs(1), speed: 26}
+            } else {
+                ui::ScrollMode::Disabled
             }
         } else {
             // Left align the text labels to the icon and then
@@ -127,6 +131,7 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ui_ctrl: &mut ui::Contr
             text_alignment = ui::TextHorizontalAlignment::Left;
             icon_offset_x = max(0, (available_width as i32 - total_width as i32) / 2) as u16;
             text_offset_x = icon_offset_x + icon_width;
+            line_2_scroll = ui::ScrollMode::Disabled;
         }
 
         if let Some(icon) = icon {
@@ -173,6 +178,7 @@ pub fn prepare_menu<M, A, D>(menu_item: M, delegate: &D, ui_ctrl: &mut ui::Contr
                 font: line_2_font,
                 horizontal_alignment: text_alignment,
                 text: line_2,
+                scroll: line_2_scroll,
                 ..Default::default()
             }.into());
         }
