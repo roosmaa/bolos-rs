@@ -88,6 +88,7 @@ impl<A> ScheduledAction<A> {
 pub struct Middleware<A, D> {
     ui_version: Option<u16>,
     current_view_index: usize,
+    views_sent: bool,
     button_actions: ButtonActionMap<A>,
     button_bits: u8,
     button_timer: usize,
@@ -104,6 +105,7 @@ impl<A, D> Middleware<A, D>
         Self{
             ui_version: None,
             current_view_index: 0,
+            views_sent: false,
             button_actions: Default::default(),
             button_bits: 0,
             button_timer: 0,
@@ -120,6 +122,7 @@ impl<A, D> Middleware<A, D>
     fn reset_for_redraw(&mut self, delegate: &D) {
         self.ui_version = Some(delegate.ui_version());
         self.current_view_index = 0;
+        self.views_sent = false;
         self.button_actions = Default::default();
         self.max_scroll_time = Duration::zero();
         self.auto_action = None;
@@ -135,6 +138,11 @@ impl<A, D> Middleware<A, D>
                 return Some(ch);
             },
             _ => {},
+        }
+
+        // Everything is displayed already, nothing to be done
+        if self.views_sent {
+            return Some(ch);
         }
 
         // See if there's another view to render
@@ -156,6 +164,7 @@ impl<A, D> Middleware<A, D>
 
             None
         } else {
+            self.views_sent = true;
             self.button_actions = ctrl.button_actions;
 
             if let AutoAction::Countdown{
@@ -167,13 +176,13 @@ impl<A, D> Middleware<A, D>
             } = ctrl.auto_action {
                 let mut time = wait_time;
                 if wait_for_scroll {
-                    time += self.max_scroll_time;
+                    time = max(time, self.max_scroll_time);
                 }
                 if let Some(min_wait_time) = min_wait_time {
-                    time = min(time, min_wait_time);
+                    time = max(time, min_wait_time);
                 }
                 if let Some(max_wait_time) = max_wait_time {
-                    time = max(time, max_wait_time);
+                    time = min(time, max_wait_time);
                 }
                 self.auto_action = Some(ScheduledAction{
                     time_left: time,
@@ -226,6 +235,22 @@ impl<A, D> Middleware<A, D>
         }
     }
 
+    fn process_tick(&mut self, delegate: &mut D) {
+        let passed = Duration::from_millis(100);
+
+        if let Some(ScheduledAction{time_left, action}) = self.auto_action {
+            if time_left > passed {
+                self.auto_action = Some(ScheduledAction{
+                    time_left: time_left - passed,
+                    action,
+                });
+            } else {
+                self.auto_action = None;
+                delegate.process_action(action);
+            }
+        }
+    }
+
     pub fn process_event(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel> {
         match ch.event {
             Event::DisplayProcessed(_) => {
@@ -233,6 +258,9 @@ impl<A, D> Middleware<A, D>
             },
             Event::ButtonPush(ButtonPushEvent{ flags }) => {
                 self.process_button_presses(flags >> 1, delegate);
+            },
+            Event::Ticker(_) => {
+                self.process_tick(delegate);
             },
             _ => {},
         }
@@ -572,16 +600,16 @@ impl<A> From<A> for ScrollFinishedEvent<A> {
 
 pub enum ScrollMode {
     Disabled,
-    Once{ delay_secs: u8, speed: u8 },
-    Infinite{ delay_secs: u8, speed: u8 },
+    Once{ delay: Duration, speed: u8 },
+    Infinite{ delay: Duration, speed: u8 },
 }
 
 impl ScrollMode {
     fn to_wire_format(&self) -> (u8, u8) {
         match self {
             &ScrollMode::Disabled => (0, 0),
-            &ScrollMode::Once{ delay_secs, speed } => (delay_secs | 0x80, speed),
-            &ScrollMode::Infinite{ delay_secs, speed } => (delay_secs, speed),
+            &ScrollMode::Once{ delay, speed } => ((delay.as_millis() / 100) as u8 | 0x80, speed),
+            &ScrollMode::Infinite{ delay, speed } => ((delay.as_millis() / 100) as u8, speed),
         }
     }
 }
@@ -680,15 +708,14 @@ impl<'a> LabelLineView<'a> {
 
     fn estimate_scroll_time(&self) -> Option<Duration> {
         match self.scroll {
-            ScrollMode::Once{ delay_secs, speed } => {
+            ScrollMode::Once{ delay, speed } => {
                 let text_width = self.font.width_for_text(self.text);
                 let speed = speed as usize;
-                let delay_secs = delay_secs as usize;
                 let view_width = self.frame.width as usize;
 
                 let scroll_time = if text_width > view_width {
                     2 * Duration::from_millis((text_width - view_width) * 1000 / speed)
-                        + 2 * Duration::from_secs(delay_secs)
+                        + 2 * delay
                 } else {
                     Duration::zero()
                 };

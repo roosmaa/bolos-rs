@@ -8,7 +8,7 @@ mod icon;
 
 use bolos::seproxyhal::MessageLoop;
 use bolos::runtime::exit;
-use bolos::time::{Duration};
+use bolos::time::Duration;
 use bolos::ui;
 use bolos::ui::menu;
 use bolos::state::{Store, BasicAction};
@@ -289,7 +289,7 @@ impl ui::Delegate for AppState {
                     frame: ui::Frame{ x: 23, y: 26, width: 82, height: 12 },
                     font: ui::TextFont::OpenSansRegular11px,
                     horizontal_alignment: ui::TextHorizontalAlignment::Center,
-                    scroll: ui::ScrollMode::Once{ delay_secs: 10, speed: 26 },
+                    scroll: ui::ScrollMode::Once{ delay: Duration::from_secs(1), speed: 26 },
                     ..Default::default()
                 };
 
@@ -336,9 +336,9 @@ impl ui::Delegate for AppState {
                 }
 
                 ctrl.set_auto_action(ui::AutoAction::Countdown{
-                    min_wait_time: Some(Duration::from_millis(3000)),
-                    max_wait_time: Some(Duration::from_secs(10)),
-                    wait_time: Duration::from_millis(1000),
+                    min_wait_time: Some(Duration::from_secs(3)),
+                    max_wait_time: Some(Duration::from_secs(30)),
+                    wait_time: Duration::from_secs(1),
                     wait_for_scroll: true,
                     action: BasicAction::Next,
                 });

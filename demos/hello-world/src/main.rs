@@ -6,6 +6,7 @@ extern crate bolos;
 
 use bolos::seproxyhal::MessageLoop;
 use bolos::runtime::exit;
+use bolos::time::Duration;
 use bolos::ui;
 use bolos::state::{Store, BasicAction};
 
@@ -69,7 +70,7 @@ impl ui::Delegate for AppState {
             frame: ui::Frame{ x: 23, y: 26, width: 82, height: 12 },
             font: ui::TextFont::OpenSansRegular11px,
             horizontal_alignment: ui::TextHorizontalAlignment::Center,
-            scroll: ui::ScrollMode::Once{ delay_secs: 10, speed: 26 },
+            scroll: ui::ScrollMode::Once{ delay: Duration::from_secs(1), speed: 26 },
             text: "Rust",
             ..Default::default()
         }.into());
