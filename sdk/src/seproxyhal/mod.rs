@@ -81,10 +81,14 @@ impl Channel {
 
 impl Drop for Channel {
     fn drop(&mut self) {
-        // Send a general status when the app-level code failed to
-        // send a response
-        if !self.status_sent {
-            packet::send(status::GeneralStatus{}).is_ok();
+        // Send a general status code when the app nor the
+        // supervisor has sent one yet
+        let app_status_sent = self.status_sent;
+        if !app_status_sent {
+            let os_status_sent = io_seproxyhal_spi_is_status_sent().unwrap();
+            if !os_status_sent {
+                packet::send(status::GeneralStatus{}).is_ok();
+            }
         }
     }
 }
