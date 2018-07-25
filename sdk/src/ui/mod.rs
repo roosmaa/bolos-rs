@@ -87,8 +87,8 @@ impl<A> ScheduledAction<A> {
 
 pub struct Middleware<A, D> {
     ui_version: Option<u16>,
-    current_view_index: usize,
-    views_sent: bool,
+    next_view_index: usize,
+    sent_view_index: usize,
     button_actions: ButtonActionMap<A>,
     button_bits: u8,
     button_timer: usize,
@@ -104,8 +104,8 @@ impl<A, D> Middleware<A, D>
     pub fn new() -> Self {
         Self{
             ui_version: None,
-            current_view_index: 0,
-            views_sent: false,
+            next_view_index: 0,
+            sent_view_index: usize::max_value(),
             button_actions: Default::default(),
             button_bits: 0,
             button_timer: 0,
@@ -121,8 +121,8 @@ impl<A, D> Middleware<A, D>
 
     fn reset_for_redraw(&mut self, delegate: &D) {
         self.ui_version = Some(delegate.ui_version());
-        self.current_view_index = 0;
-        self.views_sent = false;
+        self.next_view_index = 0;
+        self.sent_view_index = usize::max_value();
         self.button_actions = Default::default();
         self.max_scroll_time = Duration::zero();
         self.auto_action = None;
@@ -141,13 +141,15 @@ impl<A, D> Middleware<A, D>
         }
 
         // Everything is displayed already, nothing to be done
-        if self.views_sent {
+        if self.sent_view_index == self.next_view_index {
             return Some(ch);
         }
 
         // See if there's another view to render
-        let mut ctrl = Controller::new(self.current_view_index);
+        let mut ctrl = Controller::new(self.next_view_index);
         delegate.prepare_ui(&mut ctrl);
+        self.sent_view_index = self.next_view_index;
+
         if let Some(ref view) = ctrl.target_view {
             let scroll_time = if let View::LabelLine(ref v) = view {
                 v.estimate_scroll_time()
@@ -164,7 +166,6 @@ impl<A, D> Middleware<A, D>
 
             None
         } else {
-            self.views_sent = true;
             self.button_actions = ctrl.button_actions;
 
             if let AutoAction::Countdown{
@@ -254,7 +255,7 @@ impl<A, D> Middleware<A, D>
     pub fn process_event(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel> {
         match ch.event {
             Event::DisplayProcessed(_) => {
-                self.current_view_index += 1;
+                self.next_view_index += 1;
             },
             Event::ButtonPush(ButtonPushEvent{ flags }) => {
                 self.process_button_presses(flags >> 1, delegate);
