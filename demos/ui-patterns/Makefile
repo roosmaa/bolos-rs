@@ -8,12 +8,17 @@ NANOS_TARGET_ID=0x31100003
 RELEASE_ELF=$(WORKSPACE_DIR)target/thumbv6m-none-eabi/release/ui-patterns
 RELEASE_HEX=$(RELEASE_ELF).hex
 
+PRIVATE_KEY=$(shell cat $(WORKSPACE_DIR)customCA.key)
+ifneq ($(PRIVATE_KEY),)
+PARAM_PRIVATE_KEY=--rootPrivateKey $(PRIVATE_KEY)
+endif
+
 .PHONY: load
 load:
 	cargo build --release
 	arm-none-eabi-objcopy -O ihex -S $(RELEASE_ELF) $(RELEASE_HEX)
 	python -m ledgerblue.loadApp \
-		--rootPrivateKey `cat $(WORKSPACE_DIR)customCA.key` \
+		$(PARAM_PRIVATE_KEY) \
 		--targetId $(NANOS_TARGET_ID) \
 		--tlv --delete \
 		--fileName $(RELEASE_HEX) \
@@ -25,6 +30,6 @@ load:
 .PHONY: delete
 delete:
 	python -m ledgerblue.deleteApp \
-		--rootPrivateKey `cat $(WORKSPACE_DIR)customCA.key` \
+		$(PARAM_PRIVATE_KEY) \
 		--targetId $(NANOS_TARGET_ID) \
 		--appName $(APP_NAME)
