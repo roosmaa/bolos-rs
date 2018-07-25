@@ -2,7 +2,7 @@
 
 This application demonstrates common user interface patterns that are popular among existing Ledger apps such as menu navigation and confirmation screens.
 
-# Build instructions
+## Build instructions
 
 You should have the build environment setup at this point, if not, see the instructions in README.md in [demos/](https://github.com/roosmaa/bolos-rs/tree/master/demos) folder.
 
