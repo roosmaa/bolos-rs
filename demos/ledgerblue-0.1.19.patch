@@ -1,0 +1,29 @@
+--- venv-vanilla/lib/python3.6/site-packages/ledgerblue/hexParser.py    2018-02-27 23:13:10.000000000 +0100
++++ venv-patched/lib/python3.6/site-packages/ledgerblue/hexParser.py   2018-06-25 11:38:48.587118929 +0200
+@@ -72,7 +72,7 @@
+                                         current = startFirst
+                                 if address != current:
+                                         self._addArea(IntelHexArea((startZone << 16) + startFirst, zoneData))
+-                                        zoneData = ""
++                                        zoneData = b''
+                                         startFirst = address
+                                         current = address
+                                 zoneData += data[4:4 + count]
+@@ -80,7 +80,7 @@
+                         if recordType == 0x01:
+                                 if len(zoneData) != 0:
+                                         self._addArea(IntelHexArea((startZone << 16) + startFirst, zoneData))
+-                                        zoneData = ""
++                                        zoneData = b''
+                                         startZone = None
+                                         startFirst = None
+                                         current = None                                        
+@@ -91,7 +91,7 @@
+                         if recordType == 0x04:
+                                         if len(zoneData) != 0:
+                                                 self._addArea(IntelHexArea((startZone << 16) + startFirst, zoneData))
+-                                                zoneData = ""
++                                                zoneData = b''
+                                                 startZone = None
+                                                 startFirst = None
+                                                 current = None
