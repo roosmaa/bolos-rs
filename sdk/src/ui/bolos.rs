@@ -17,6 +17,9 @@ fn invoke_ux(params: &[u8]) -> Response {
 }
 
 
+// This method should never be inlined as the compiler will produce
+// code that crashes with ROPI
+#[inline(never)]
 pub fn event() -> Response {
     let params = [
         UxType::Event as u8,
@@ -27,6 +30,9 @@ pub fn event() -> Response {
     invoke_ux(&params)
 }
 
+// This method should never be inlined as the compiler will produce
+// code that crashes with ROPI
+#[inline(never)]
 pub fn wake_up() -> Response {
     let params = [
         UxType::WakeUp as u8,

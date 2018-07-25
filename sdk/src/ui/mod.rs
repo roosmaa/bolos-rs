@@ -129,17 +129,6 @@ impl<A, D> Middleware<A, D>
     }
 
     fn send_next_view(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel> {
-        // Coordinate our rendering with the system UI
-        match bolos::event() {
-            bolos::Response::Redraw => {
-                self.reset_for_redraw(delegate);
-            },
-            bolos::Response::Ignore | bolos::Response::Continue => {
-                return Some(ch);
-            },
-            _ => {},
-        }
-
         // Everything is displayed already, nothing to be done
         if self.sent_view_index == self.next_view_index {
             return Some(ch);
@@ -253,6 +242,14 @@ impl<A, D> Middleware<A, D>
     }
 
     pub fn process_event(&mut self, ch: Channel, delegate: &mut D) -> Option<Channel> {
+        // Coordinate our rendering with the system UI
+        match bolos::event() {
+            bolos::Response::Redraw => self.reset_for_redraw(delegate),
+            bolos::Response::Ignore |
+            bolos::Response::Continue => return None,
+            _ => {},
+        };
+
         match ch.event {
             Event::DisplayProcessed(_) => {
                 self.next_view_index += 1;
