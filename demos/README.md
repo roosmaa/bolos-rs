@@ -32,8 +32,8 @@ $ source ~/.bolos-virtualenv/bin/activate
 At the time of writing, the ledgerblue (0.1.19) package needs some manual patching to make it work on Python 3 reliably:
 
 ```
-(bolos) $ cd ~/.bolos-virtualenv/
-(bolos) $ patch -p 1 < path/to/bolos-rs/demos/ledgerblue-0.1.19.patch
+(bolos) $ cd ~/.bolos-virtualenv/lib/python3*/
+(bolos) $ patch -p0 < path/to/bolos-rs/demos/ledgerblue-0.1.19.patch
 ```
 
 ### Step 3: Rust

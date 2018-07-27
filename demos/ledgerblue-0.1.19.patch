@@ -1,5 +1,5 @@
---- venv-vanilla/lib/python3.6/site-packages/ledgerblue/hexParser.py    2018-02-27 23:13:10.000000000 +0100
-+++ venv-patched/lib/python3.6/site-packages/ledgerblue/hexParser.py   2018-06-25 11:38:48.587118929 +0200
+--- site-packages/ledgerblue/hexParser.py    2018-02-27 23:13:10.000000000 +0100
++++ site-packages/ledgerblue/hexParser.py   2018-06-25 11:38:48.587118929 +0200
 @@ -72,7 +72,7 @@
                                          current = startFirst
                                  if address != current:
